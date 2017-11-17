@@ -1,0 +1,10 @@
+WebOb
+Paste
+webapp2
+Jinja2
+boto3
+pynamodb
+urlfetch
+logging
+actingweb
+#pydevd
