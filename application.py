@@ -11,7 +11,7 @@ app = webapp2.WSGIApplication([
     ('/', root_factory.root_factory),
     webapp2.Route(r'/bot<:/?><path:(.*)>', bots.bots),
     (r'/(.*)/meta/?(.*)', actor_meta.actor_meta),
-    webapp2.Route(r'/oauth', callback_oauth.callback_oauth),
+    webapp2.Route(r'/oauth', callback_oauth.callback_oauths),
     webapp2.Route(r'/<id>/oauth<:/?><path:.*>', actor_oauth.actor_oauth),
     webapp2.Route(r'/<id><:/?>', actor_root.actor_root),
     webapp2.Route(r'/<id>/www<:/?><path:(.*)>', actor_www.actor_www),
@@ -31,14 +31,59 @@ app = webapp2.WSGIApplication([
 
 def set_config():
     if not app.registry.get('config'):
-        myurl = os.getenv('APP_HOST_FQDN', "localhost")
-        proto = os.getenv('APP_HOST_PROTOCOL', "http://")
+        myurl = os.getenv('APP_HOST_FQDN', "greger.ngrok.io")
+        proto = os.getenv('APP_HOST_PROTOCOL', "https://")
+        type = "urn:actingweb:actingweb.org:spark-army-knife"
+        bot_token = os.getenv('APP_BOT_TOKEN', "MzdhOGIyZjMtZTlmMy00Y2Q0LWIwZTQtMDUzODQ5MzdhNzk2YzgyYTJmODktZmQ3")
+        bot_email = os.getenv('APP_BOT_EMAIL', "stuff@sparkbot.io")
+        bot_secret = os.getenv('APP_BOT_SECRET', "=7@2ALaj&88weAUEt-y+k9_=+gH?XQ")
+        bot_admin_room = os.getenv('APP_BOT_ADMIN_ROOM', "Y2lzY29zcGFyazovL3VzL1JPT00vOWE4NGEwYjAtMDY0Ni0xMWU3LTkyZWMtMmI2MzE0NTI2Yzky")
+        oauth = {
+            'client_id': "C8e851cea45086276d65341625e5eb01ad3ca134ef6d1f9f308dbe7a77476ab4f",
+            'client_secret': "73c33bed68127fac61788a8419f88d558490a4859044b11f410ea03469ccdc18",
+            'redirect_uri': proto + myurl + "/oauth",
+            'scope': "spark:people_read spark:rooms_read spark:rooms_write spark:memberships_read spark:memberships_write spark:messages_write spark:messages_read spark:teams_read spark:teams_write",
+            'auth_uri': "https://api.ciscospark.com/v1/authorize",
+            'token_uri': "https://api.ciscospark.com/v1/access_token",
+            'response_type': "code",
+            'grant_type': "authorization_code",
+            'refresh_type': "refresh_token",
+        }
+        actors = {
+            'boxbasic': {
+                'type': 'urn:actingweb:actingweb.org:boxbasic',
+                'factory': 'https://box-spark-dev.appspot.com/',
+                'relationship': 'friend',
+            },
+            'myself': {
+                'type': type,
+                'factory': proto + myurl + '/',
+                'relationship': 'friend',  # associate, friend, partner, admin
+            }
+        }
         # Import the class lazily
         config = webapp2.import_string('actingweb.config')
         config = config.config(
             database='dynamodb',
             fqdn=myurl,
-            proto=proto)
+            proto=proto,
+            type=type,
+            desc="Spark actor: ",
+            version="2.0",
+            devtest=True,
+            actors=actors,
+            force_email_prop_as_creator=True,
+            unique_creator=True,
+            www_auth="oauth",
+            ui=True,
+            bot={
+                "token": bot_token,
+                "email": bot_email,
+                "secret": bot_secret,
+                "admin_room": bot_admin_room
+            },
+            oauth=oauth
+        )
         # Register the instance in the registry.
         app.registry['config'] = config
     return

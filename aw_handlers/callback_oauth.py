@@ -3,7 +3,7 @@ from actingweb import aw_web_request
 from actingweb.handlers import callback_oauth
 
 
-class callback_oauth(webapp2.RequestHandler):
+class callback_oauths(webapp2.RequestHandler):
 
     def init(self):
         self.obj=aw_web_request.aw_webobj(
@@ -16,10 +16,10 @@ class callback_oauth(webapp2.RequestHandler):
     def get(self):
         self.init()
         # Process the request
-        self.handler.get(id)
+        self.handler.get()
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
         self.response.write(self.obj.response.body)
-        if self.obj.redirect:
-            self.redirect(self.obj.redirect)
+        if self.obj.response.redirect:
+            self.redirect(self.obj.response.redirect)

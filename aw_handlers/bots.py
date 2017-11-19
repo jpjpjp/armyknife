@@ -1,6 +1,7 @@
 import webapp2
 from actingweb import aw_web_request
 from actingweb.handlers import bot
+import on_aw
 
 class bots(webapp2.RequestHandler):
 
@@ -10,7 +11,7 @@ class bots(webapp2.RequestHandler):
             params=self.request.params,
             body=self.request.body,
             headers=self.request.headers)
-        self.handler = bot.bot_handler(self.obj, self.app.registry.get('config'))
+        self.handler = bot.bot_handler(self.obj, self.app.registry.get('config'), on_aw=on_aw.spark_on_aw)
 
     def post(self, path):
         self.init()

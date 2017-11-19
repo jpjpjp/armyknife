@@ -6,11 +6,18 @@ from actingweb.handlers import www
 class actor_www(webapp2.RequestHandler):
 
     def init(self):
+        cookies = {}
+        raw_cookies = self.request.headers.get("Cookie")
+        if raw_cookies:
+            for cookie in raw_cookies.split(";"):
+                name, value = cookie.split("=")
+                cookies[name] = value
         self.obj=aw_web_request.aw_webobj(
             url=self.request.url,
             params=self.request.params,
             body=self.request.body,
-            headers=self.request.headers)
+            headers=self.request.headers,
+            cookies=cookies)
         self.handler = www.www_handler(self.obj, self.app.registry.get('config'))
 
     def get(self, id, path):
@@ -18,6 +25,12 @@ class actor_www(webapp2.RequestHandler):
         # Process the request
         self.handler.get(id, path)
         # Pass results back to webapp2
+        if len(self.obj.response.cookies) > 0:
+            for a in self.obj.response.cookies:
+                self.request.set_cookie(a["name"], a["value"], max_age=a["max_age"], secure=a["secure"])
+        if self.obj.response.redirect:
+            self.redirect(self.obj.response.redirect)
+            return
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
         if not path or path == '':

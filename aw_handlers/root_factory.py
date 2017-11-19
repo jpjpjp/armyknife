@@ -36,6 +36,6 @@ class root_factory(webapp2.RequestHandler):
             self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         else:
             self.response.write(self.obj.response.body)
-        if self.obj.redirect:
-            self.redirect(self.obj.redirect)
+        if self.obj.response.redirect:
+            self.redirect(self.obj.response.redirect)
 
