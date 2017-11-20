@@ -218,7 +218,7 @@ class spark_on_aw(on_aw.on_aw_base):
             logging.debug('Found actor(' + myself.id + ')')
             is_actor_user = True
             # Re-instantiate spark communciations with the proper actor
-            spark = ciscospark.ciscospark(auth=self.auth, actorId=self.myself.id)
+            spark = ciscospark.ciscospark(auth=self.auth, actorId=myself.id, config=self.config)
         else:
             is_actor_user = False
             personActor = spark.getPerson(personId)
