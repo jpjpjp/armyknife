@@ -5,7 +5,6 @@ from actingweb import auth as botauth
 class ciscospark():
 
     def __init__(self, auth, actorId, config):
-        self.autoReminderPrefix = "#/"
         self.actorId = actorId
         self.auth = auth
         self.spark = {

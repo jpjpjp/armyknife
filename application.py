@@ -31,16 +31,16 @@ app = webapp2.WSGIApplication([
 
 def set_config():
     if not app.registry.get('config'):
-        myurl = os.getenv('APP_HOST_FQDN', "greger.ngrok.io")
+        myurl = os.getenv('APP_HOST_FQDN', "localhost")
         proto = os.getenv('APP_HOST_PROTOCOL', "https://")
         type = "urn:actingweb:actingweb.org:spark-army-knife"
-        bot_token = os.getenv('APP_BOT_TOKEN', "MzdhOGIyZjMtZTlmMy00Y2Q0LWIwZTQtMDUzODQ5MzdhNzk2YzgyYTJmODktZmQ3")
-        bot_email = os.getenv('APP_BOT_EMAIL', "stuff@sparkbot.io")
-        bot_secret = os.getenv('APP_BOT_SECRET', "=7@2ALaj&88weAUEt-y+k9_=+gH?XQ")
-        bot_admin_room = os.getenv('APP_BOT_ADMIN_ROOM', "Y2lzY29zcGFyazovL3VzL1JPT00vOWE4NGEwYjAtMDY0Ni0xMWU3LTkyZWMtMmI2MzE0NTI2Yzky")
+        bot_token = os.getenv('APP_BOT_TOKEN', "")
+        bot_email = os.getenv('APP_BOT_EMAIL', "")
+        bot_secret = os.getenv('APP_BOT_SECRET', "")
+        bot_admin_room = os.getenv('APP_BOT_ADMIN_ROOM', "")
         oauth = {
-            'client_id': "C8e851cea45086276d65341625e5eb01ad3ca134ef6d1f9f308dbe7a77476ab4f",
-            'client_secret': "73c33bed68127fac61788a8419f88d558490a4859044b11f410ea03469ccdc18",
+            'client_id': os.getenv('APP_OAUTH_ID',""),
+            'client_secret': os.getenv('APP_OAUTH_KEY',""),
             'redirect_uri': proto + myurl + "/oauth",
             'scope': "spark:people_read spark:rooms_read spark:rooms_write spark:memberships_read spark:memberships_write spark:messages_write spark:messages_read spark:teams_read spark:teams_write",
             'auth_uri': "https://api.ciscospark.com/v1/authorize",
