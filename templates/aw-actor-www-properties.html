@@ -1,8 +1,8 @@
 <html>
   <body>
 
-    {% for k,v in properties.items() %}
-	{{ k }}: {{ v }} <a href="/{{ id }}/properties/{{ k }}?_method=DELETE">Delete</a><br>
+    {% for property in properties %}
+	{{ property.name }}: {{ property.value }} <a href="/{{ id }}/properties/{{ property.name }}?_method=DELETE">Delete</a><br>
     {% endfor %}
 
   </body>

@@ -1,10 +1,16 @@
 <html>
   <body>
-  Welcome to the ActingWeb Demo.<br>
-	To register an actor, fill out the form below.<br>
+  Welcome to the Spark Army Knife.<br>
+	To register fill out the form below. You will be forwarded to Spark to authorize Spark Army Knife for your account. Please use your Spark credentials.<br>
+  NOTE! Some of the functionality is dependent on listening in to all your rooms. New rooms will be tracked automatically, but due to limitations in the Spark APIs, it may take 24+ hours before new rooms are tracked.<br>
+  <br>
+  WARNING!!!! By signing up, you accept that all your rooms and all your messages will be tracked and the sender of messages identified. No messages are stored, but all room titles are. Your own messages will be retrieved to look for your /commands, however, none will be stored. In order to track activity and offer a good user experience, all room titles will be stored. When you request messages from a tracked user using the /get command or do a /pin command, those messages will be retrived real-time from Spark and delivered to the room where you issued the /get command (or to the Army Knife Control room for /pin), but no messages will be stored.<br>
+  This service is an experiment and has no guarantees and may be discontinued at any time. Also note that some Spark API requests may be logged for debugging purposes. These will never contain the content of the message, but may contain other information about users and rooms.<br><br>
+  Please contact Greger Wedel on Spark if you have questions.
+
     <form action="/" method="post">
-      <div>Creator email:<input type="text" name="creator" maxlength="100" /></div>
-      <div><input type="submit" value="Create new actor"></div>
+      <div>Spark email:<input type="text" name="creator" maxlength="100" /></div>
+      <div><input type="submit" value="Create new account"></div>
     </form>
 
   </body>

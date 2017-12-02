@@ -212,6 +212,46 @@ def exec_all_users(msg_list=None, msg=None, spark=None, config=None):
 class spark_on_aw(on_aw.on_aw_base):
 
     @classmethod
+    def delete_actor(self):
+        spark = ciscospark.ciscospark(auth=self.auth, actorId=self.myself.id, config=self.config)
+        store = armyknife.armyknife(actorId=self.myself.id, config=self.config)
+        store.clearMessages(email=self.myself.creator)
+        trackers = store.loadTrackers()
+        for tracker in trackers:
+            store.deleteTracker(tracker.email)
+        chatRoom = self.myself.getProperty('chatRoomId')
+        if chatRoom and chatRoom.value:
+            spark.postMessage(
+                chatRoom.value, "**Deleting all your data and account.**\n\nThe 1:1 room with the bot will remain." \
+                                " Type /init there if you want to create a new account.",
+                markdown=True)
+            spark.deleteRoom(chatRoom.value)
+        firehoseId = self.myself.getProperty('firehoseId')
+        if firehoseId and firehoseId.value:
+            spark.unregisterWebHook(firehoseId.value)
+        store.deleteRooms()
+        store.deletePinnedMessages()
+        store.deletePinnedMessages(comment="#/TOPOFMIND")
+        if '@actingweb.net' not in self.myself.creator and self.myself.creator != "creator" and self.myself.creator != "trustee":
+            spark.postAdminMessage(text='User just left: ' + self.myself.creator)
+        return
+
+    @classmethod
+    def www_paths(self, path=''):
+        if path == '' or not self.myself:
+            logging.info('Got an on_www_paths without proper parameters.')
+            return False
+        spark = ciscospark.ciscospark(self.auth, self.myself.id)
+        if path == 'getattachment':
+            self.webobj.response.template_values = {
+                'url': str(self.webobj.request.get('url')),
+                'filename': str(self.webobj.request.get('filename')),
+            }
+            return ""
+        return False
+
+
+    @classmethod
     def bot_post(self, path):
         """Called on POSTs to /bot."""
         spark = ciscospark.ciscospark(auth=self.auth, actorId=None, config=self.config)
@@ -938,7 +978,7 @@ class spark_on_aw(on_aw.on_aw_base):
         hookId = self.myself.getProperty('firehoseId').value
         self.myself.deleteProperty('token_invalid')
         self.myself.deleteProperty('service_status')
-        if not hookId:
+        if not hookId or not spark.getWebHook(hookId):
             msghash = hashlib.sha256()
             msghash.update(self.myself.passphrase)
             hook = spark.registerWebHook(name='Firehose', target=self.config.root + self.myself.id + '/callbacks/firehose',
@@ -977,24 +1017,20 @@ class spark_on_aw(on_aw.on_aw_base):
             if not room:
                 self.webobj.response.set_status(404)
                 return True
-            template_values = {
+            self.webobj.response.template_values = {
                 'id': uuid,
                 'title': room.title,
             }
-            template_path = os.path.join(os.path.dirname(__file__), '../templates/spark-joinroom.html')
-            self.webobj.response.write(template.render(template_path, template_values).encode('utf-8'))
         if name == 'makefilepublic':
             pass
             # This is not secure!!! So do not execute
             # token is exposed directly in javascript in the users browser
 
-            # template_values = {
+            # self.webobj.response.template_values = {
             #    'url': str(self.webobj.request.get('url')),
             #    'token': str(auth.token),
             #    'filename': str(self.webobj.request.get('filename')),
             # }
-            # template_path = os.path.join(os.path.dirname(__file__), '../templates/spark-getattachment.html')
-            # req.response.write(template.render(template_path, template_values).encode('utf-8'))
         return True
 
     @classmethod
@@ -1002,15 +1038,17 @@ class spark_on_aw(on_aw.on_aw_base):
         if not self.myself:
             logging.debug("Got a firehose callback for an unknown user.")
             return True
-        spark = ciscospark.ciscospark(auth=self.auth, actorId=self.myself.id, config=self.config)
-        store = armyknife.armyknife(actorId=self.myself.id, config=self.config)
+        else:
+            myself=self.myself
+        spark = ciscospark.ciscospark(auth=self.auth, actorId=myself.id, config=self.config)
+        store = armyknife.armyknife(actorId=myself.id, config=self.config)
         logging.debug("Callback body: " + self.webobj.request.body.decode('utf-8', 'ignore'))
-        chatRoomId = self.myself.getProperty('chatRoomId').value
+        chatRoomId = myself.getProperty('chatRoomId').value
         # Clean up any actor creations from earlier where we got wrong creator email
-        if self.myself.creator == self.config.bot['email'] or self.myself.creator == "creator":
-            my_email = self.myself.getProperty('email').value
+        if myself.creator == self.config.bot['email'] or myself.creator == "creator":
+            my_email = myself.getProperty('email').value
             if my_email and len(my_email) > 0:
-                self.myself.modify(creator=my_email)
+                myself.modify(creator=my_email)
         # Deprecated support for /callbacks/room
         if name == 'room':
             self.response.set_status(404)
@@ -1020,23 +1058,20 @@ class spark_on_aw(on_aw.on_aw_base):
             uuid = self.webobj.request.get('id')
             email = self.webobj.request.get('email')
             room = store.loadRoomByUuid(uuid)
-            template_values = {
+            self.webobj.response.template_values = {
                 'title': room.title,
             }
             if not store.addMember(id=room.id, email=email):
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Failed adding new member " +
                          email + " to room " + room.title)
-                template_path = os.path.join(os.path.dirname(
-                    __file__), '../templates/spark-joinedroom-failed.html')
+                self.webobj.response.template_values["template_path"] = 'spark-joinedroom-failed.html'
             else:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Added new member " + email + " to room " + room.title)
-                template_path = os.path.join(os.path.dirname(
-                    __file__), '../templates/spark-joinedroom.html')
-            req.response.write(template.render(template_path, template_values).encode('utf-8'))
+                self.webobj.response.template_values["template_path"] = 'spark-joinedroom.html'
             return True
         # Handle json POSTs below
         body = json.loads(self.webobj.request.body.decode('utf-8', 'ignore'))
@@ -1046,31 +1081,31 @@ class spark_on_aw(on_aw.on_aw_base):
         else:
             responseRoomId = chatRoomId
         now = datetime.datetime.now()
-        myOauthId = self.myself.getProperty('oauthId').value
-        if self.myself.getProperty('autoreplyMsg').value:
-            reply_msg = "Via armyknife@sparkbot.io auto-reply:\n\n" + self.myself.getProperty('autoreplyMsg').value
+        myOauthId = myself.getProperty('oauthId').value
+        if myself.getProperty('autoreplyMsg').value:
+            reply_msg = "Via armyknife@sparkbot.io auto-reply:\n\n" + myself.getProperty('autoreplyMsg').value
         else:
             reply_msg = None
-        service_status = self.myself.getProperty('service_status').value
+        service_status = myself.getProperty('service_status').value
         if not service_status:
-            self.myself.setProperty('service_status', 'firehose')
+            myself.setProperty('service_status', 'firehose')
         # validateOAuthToken() returns the redirect URL if token cannot be refreshed
         if len(self.auth.validateOAuthToken(lazy=True)) > 0:
             if not service_status or service_status != 'invalid':
-                self.myself.setProperty('service_status', 'invalid')
+                myself.setProperty('service_status', 'invalid')
             logging.info("Was not able to automatically refresh token.")
-            token_invalid = self.myself.getProperty('token_invalid').value
+            token_invalid = myself.getProperty('token_invalid').value
             if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
-                self.myself.setProperty('token_invalid', now.strftime("%Y%m%d"))
+                myself.setProperty('token_invalid', now.strftime("%Y%m%d"))
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Your Spark Army Knife account has no longer access. Please type " \
                          "/init in this room to re-authorize the account.")
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="If you repeatedly get this error message, do /delete DELETENOW " \
                          "before a new /init. This will reset your account (note: all settings as well).")
-                logging.info("User (" + self.myself.creator + ") has invalid refresh token and got notified.")
+                logging.info("User (" + myself.creator + ") has invalid refresh token and got notified.")
             req.response.set_status(202, "Accepted, but not processed")
             return True
         # This is a special section that uses firehose for all messages to retrieve pinned messages
@@ -1146,7 +1181,7 @@ class spark_on_aw(on_aw.on_aw_base):
             sign = None
         if sign and len(sign) > 0:
             myhash = hashlib.sha256()
-            myhash.update(self.myself.passphrase)
+            myhash.update(myself.passphrase)
             msghash = hmac.new(myhash.hexdigest(), self.webobj.request.body, digestmod=hashlib.sha1)
             if msghash.hexdigest() == sign:
                 logging.debug('Signature matches')
@@ -1157,25 +1192,22 @@ class spark_on_aw(on_aw.on_aw_base):
             # This code is temporary to re-register all webhooks with a secret
             # Once all accounts have been re-registered, the message should just be
             # dropped here.
-            if '@cisco.com' in self.myself.creator:
-                req.response.set_status(403, "Forbidden")
-                return True
             logging.debug("Didn't get message signature from Spark, re-registering firehose...")
-            firehoseId = self.myself.getProperty('firehoseId')
+            firehoseId = myself.getProperty('firehoseId')
             if firehoseId and firehoseId.value:
                 spark.unregisterWebHook(firehoseId.value)
             msghash = hashlib.sha256()
-            msghash.update(self.myself.passphrase)
-            hook = spark.registerWebHook(name='Firehose', target=self.config.root + self.myself.id + '/callbacks/firehose',
+            msghash.update(myself.passphrase)
+            hook = spark.registerWebHook(name='Firehose', target=self.config.root + myself.id + '/callbacks/firehose',
                                          resource='all', event='all', secret=msghash.hexdigest())
             if hook and hook['id']:
                 logging.debug('Successfully registered secured firehose webhook')
-                spark.postAdminMessage(text='Successfully registered secured firehose: ' + self.myself.creator)
-                self.myself.setProperty('firehoseId', hook['id'])
+                spark.postAdminMessage(text='Successfully registered secured firehose: ' + myself.creator)
+                myself.setProperty('firehoseId', hook['id'])
             else:
                 logging.debug('Failed to register messages firehose webhook')
             # Do not accept this message as it may be an attacker
-            req.response.set_status(403, "Forbidden")
+            self.webobj.response.set_status(403, "Forbidden")
             return True
         if name == 'firehose':
             if body['resource'] == 'messages':
@@ -1184,17 +1216,17 @@ class spark_on_aw(on_aw.on_aw_base):
                     if "@sparkbot.io" in data['personEmail'].lower():
                         self.webobj.response.set_status(204)
                         return True
-                    if data['roomType'] == 'direct' and reply_msg and data['personEmail'] != self.myself.creator:
+                    if data['roomType'] == 'direct' and reply_msg and data['personEmail'] != myself.creator:
                         # Retrieve the last user we responded to and don't reply if it's the same user
-                        lastAutoReply = self.myself.getProperty('autoreplyMsg-last').value
+                        lastAutoReply = myself.getProperty('autoreplyMsg-last').value
                         if lastAutoReply and lastAutoReply == data['personEmail'].lower():
                             self.webobj.response.set_status(204)
                             return True
                         else:
-                            self.myself.setProperty('autoreplyMsg-last', data['personEmail'].lower())
+                            myself.setProperty('autoreplyMsg-last', data['personEmail'].lower())
                         msg = spark.getMessage(data['id'])
                         if not msg or 'text' not in msg:
-                            self.myself.setProperty('service_status', 'invalid')
+                            myself.setProperty('service_status', 'invalid')
                             lastErr = spark.lastResponse()
                             logging.warn(
                                 "Error in getting direct message from spark callback. Code(" + str(lastErr['code']) +
@@ -1209,7 +1241,7 @@ class spark_on_aw(on_aw.on_aw_base):
                         if 'displayName' not in personSender:
                             personSender = {}
                             personSender['displayName'] = "Unknown name"
-                        spark.postBotMessage(email=self.myself.creator,
+                        spark.postBotMessage(email=myself.creator,
                                              text="**" + personSender['displayName'] + " (" +
                                                   data['personEmail'] +
                                                   ") sent a 1:1 message to you (auto-replied to) " +
@@ -1233,7 +1265,7 @@ class spark_on_aw(on_aw.on_aw_base):
                                 msg = spark.getMessage(data['id'])
                                 personMentioning = spark.getPerson(id=data['personId'])
                                 if not room or not msg or not personMentioning:
-                                    self.myself.setProperty('service_status', 'invalid')
+                                    myself.setProperty('service_status', 'invalid')
                                     lastErr = spark.lastResponse()
                                     logging.warn(
                                         "Error in getting direct message from spark callback. Code(" + str(
@@ -1241,25 +1273,25 @@ class spark_on_aw(on_aw.on_aw_base):
                                         ") - " + lastErr['message'])
                                     return False
                                 if 'title' in room and 'text' in msg:
-                                    no_alert = self.myself.getProperty('no_mentions').value
+                                    no_alert = myself.getProperty('no_mentions').value
                                     if not no_alert or no_alert.lower() != 'true':
-                                        spark.postBotMessage(email=self.myself.creator,
+                                        spark.postBotMessage(email=myself.creator,
                                                              text="**" + personMentioning['displayName'] + " (" +
                                                                   data['personEmail'] +
                                                                   ") mentioned you " + reply_on + " in the room " +
                                                                   room['title'] + ":**\n\n" +
                                                                   msg['text'], markdown=True)
-                    if (data['roomType'] == 'direct' or mentioned) and data['personEmail'] != self.myself.creator:
+                    if (data['roomType'] == 'direct' or mentioned) and data['personEmail'] != myself.creator:
                         msg = spark.getMessage(data['id'])
                         if not msg or 'text' not in msg:
-                            self.myself.setProperty('service_status', 'invalid')
+                            myself.setProperty('service_status', 'invalid')
                             lastErr = spark.lastResponse()
                             logging.warn(
                                 "Error in getting direct message from spark callback. Code(" + str(lastErr['code']) +
                                 ") - " + lastErr['message'])
                             return False
                         if not service_status or service_status == 'invalid' or service_status == 'firehose':
-                            self.myself.setProperty('service_status', 'active')
+                            myself.setProperty('service_status', 'active')
                         me = spark.getMe()
                         message = msg['text']
                         if 'displayName' in me:
@@ -1271,7 +1303,7 @@ class spark_on_aw(on_aw.on_aw_base):
                             userName = 'No Name Available'
                         tokens = message.split(' ')
                         if tokens[0] == '/topofmind' or tokens[0] == '/tom':
-                            topofmind = self.myself.getProperty('topofmind').value
+                            topofmind = myself.getProperty('topofmind').value
                             toplist = None
                             if topofmind:
                                 try:
@@ -1282,7 +1314,7 @@ class spark_on_aw(on_aw.on_aw_base):
                             if len(tokens) == 1:
                                 if toplist and len(toplist) > 0:
                                     out = "**" + topofmind['title'] + " for " + userName + "**"
-                                    modified = self.myself.getProperty('topofmind_modified').value
+                                    modified = myself.getProperty('topofmind_modified').value
                                     if modified:
                                         timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -1312,7 +1344,7 @@ class spark_on_aw(on_aw.on_aw_base):
                                              " and authorize Spark Army Knife.")
                                     self.webobj.request.set_status(204)
                                     return True
-                                peerid = self.myself.id
+                                peerid = myself.id
                                 logging.debug("Looking for existing peer trust:(" + str(peerid) + ")")
                                 trust = subscriber.getTrustRelationship(peerid=peerid)
                                 if not trust:
@@ -1352,7 +1384,7 @@ class spark_on_aw(on_aw.on_aw_base):
                                         else:
                                             spark.postBotMessage(
                                                 email=subscriber_email,
-                                                text="Created top of mind subscription for " + self.myself.creator + ".")
+                                                text="Created top of mind subscription for " + myself.creator + ".")
                             elif len(tokens) == 2 and tokens[1].lower() == 'unsubscribe':
                                 # myself is now the owner of the topofmind
                                 # data['personEmail'] is the person wanting to unsubscribe
@@ -1367,17 +1399,17 @@ class spark_on_aw(on_aw.on_aw_base):
                                     return True
                                 # My subscriptions
                                 subs = subscriber.getSubscriptions(
-                                    peerid=self.myself.id,
+                                    peerid=myself.id,
                                     target='properties',
                                     subtarget='topofmind',
                                     callback=True)
                                 if len(subs) >= 1:
-                                    if not subscriber.deleteRemoteSubscription(peerid=self.myself.id,
+                                    if not subscriber.deleteRemoteSubscription(peerid=myself.id,
                                                                                subid=subs[0]['subscriptionid']):
                                         spark.postBotMessage(
                                             email=subscriber_email,
                                             text="Failed cancelling the top of mind subscription on your peer.")
-                                    elif not subscriber.deleteSubscription(peerid=self.myself.id,
+                                    elif not subscriber.deleteSubscription(peerid=myself.id,
                                                                            subid=subs[0]['subscriptionid']):
                                         spark.postBotMessage(
                                             email=subscriber_email,
@@ -1388,12 +1420,12 @@ class spark_on_aw(on_aw.on_aw_base):
                                             text="Cancelled the top of mind subscription.")
                                 # Subscriptions on me
                                 subs2 = subscriber.getSubscriptions(
-                                    peerid=self.myself.id,
+                                    peerid=myself.id,
                                     target='properties',
                                     subtarget='topofmind',
                                     callback=False)
                                 if len(subs2) == 0:
-                                    if not subscriber.deleteReciprocalTrust(peerid=self.myself.id, deletePeer=True):
+                                    if not subscriber.deleteReciprocalTrust(peerid=myself.id, deletePeer=True):
                                         spark.postBotMessage(
                                             email=subscriber_email,
                                             text="Failed cancelling the trust relationship.")
@@ -1402,18 +1434,18 @@ class spark_on_aw(on_aw.on_aw_base):
                                             email=subscriber_email,
                                             text="Deleted the trust relationship.")
             if body['resource'] == 'memberships':
-                if body['event'] == 'created' and ('personEmail' in data and data['personEmail'] == self.myself.creator):
+                if body['event'] == 'created' and ('personEmail' in data and data['personEmail'] == myself.creator):
                     room = store.getRoom(data['roomId'])
                     if room and 'title' in room:
-                        no_alert = self.myself.getProperty('no_newrooms').value
+                        no_alert = myself.getProperty('no_newrooms').value
                         if not no_alert or no_alert.lower() != 'true':
-                            spark.postBotMessage(email=self.myself.creator,
+                            spark.postBotMessage(email=myself.creator,
                                                  text="You were added to the room " + room['title'])
                     self.webobj.request.set_status(204)
                     return True
                 room = store.loadRoom(data['roomId'])
                 if room and room.boxFolderId:
-                    box = self.myself.getPeerTrustee(shorttype='boxbasic')
+                    box = myself.getPeerTrustee(shorttype='boxbasic')
                     proxy = aw_proxy.aw_proxy(peer_target=box)
                     if body['event'] == 'created':
                         params = {
@@ -1450,14 +1482,14 @@ class spark_on_aw(on_aw.on_aw_base):
             return True
         msg = spark.getMessage(data['id'])
         if not msg or 'text' not in msg:
-            self.myself.setProperty('service_status', 'invalid')
+            myself.setProperty('service_status', 'invalid')
             lastErr = spark.lastResponse()
             logging.warn(
                 "Error in getting direct message from spark callback. Code(" + str(lastErr['code']) +
                 ") - " + lastErr['message'])
             return False
         if not service_status or service_status == 'invalid' or service_status == 'firehose':
-            self.myself.setProperty('service_status', 'active')
+            myself.setProperty('service_status', 'active')
         msg_list = msg['text'].lower().split(" ")
         msg_list_wcap = msg['text'].split(" ")
         if msg_list[0] == '/pin':
@@ -1522,7 +1554,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     store.savePinnedMessage(comment=comment, timestamp=targettime)
             elif nr is not None:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="**Pinned (" + msgs[nr]['created'] + ") from " +
                          msgs[nr]['personEmail'] + ":** " + msgs[nr]['text'],
                     markdown=True)
@@ -1535,7 +1567,7 @@ class spark_on_aw(on_aw.on_aw_base):
             else:
                 spark.postMessage(
                     id=responseRoomId, text="Public URI: " + self.config.root +
-                                            self.myself.id + '/callbacks/joinroom?id=' + uuid)
+                                            myself.id + '/callbacks/joinroom?id=' + uuid)
         elif msg_list[0] == '/makeprivate' and responseRoomId != chatRoomId:
             if not store.deleteFromRoom(responseRoomId, uuid=True):
                 spark.postMessage(
@@ -1557,18 +1589,18 @@ class spark_on_aw(on_aw.on_aw_base):
                         msg = msg + "**Web URL**:" + " https://web.ciscospark.com/rooms/" + id2[1] + "\n\n"
             if len(msg) > 0:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="**Room Details**\n\n" + msg +
                          "\n\nUse `/listmembers` and `/listfiles` to get other room details.",
                     markdown=True)
         elif msg_list[0] == '/listfiles' and responseRoomId != chatRoomId:
             spark.deleteMessage(data['id'])
-            feature_toggles = self.myself.getProperty('featureToggles').value
+            feature_toggles = myself.getProperty('featureToggles').value
             msgs = spark.getMessages(roomId=responseRoomId, max=200)
             room = spark.getRoom(id=responseRoomId)
             if 'title' in room:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="**Files in room: " + room['title'] + "**\n\n",
                     markdown=True)
             while msgs:
@@ -1583,20 +1615,20 @@ class spark_on_aw(on_aw.on_aw_base):
                             size = int(details['Content-Length']) / 1024
                             if feature_toggles and ('listfiles' in feature_toggles or 'beta' in feature_toggles):
                                 spark.postBotMessage(
-                                    email=self.myself.creator,
+                                    email=myself.creator,
                                     text=time + ": [" + filename + " (" + str(size) + " KB)](" + self.config.root +
-                                         self.myself.id + '/www/getattachment?url=' + file + "&filename=" + filename + ")",
+                                         myself.id + '/www/getattachment?url=' + file + "&filename=" + filename + ")",
                                     markdown=True)
                             else:
                                 spark.postBotMessage(
-                                    email=self.myself.creator,
+                                    email=myself.creator,
                                     text=time + ": " + filename + " (" + str(size) + " KB)",
                                     markdown=True)
                 # Using max=0 gives us the next batch
                 msgs = spark.getMessages(roomId=responseRoomId, max=0)
         elif msg_list[0] == '/listwebhooks' and responseRoomId == chatRoomId:
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text="**All Registered Webhooks on Your Account**\n\n- - -",
                 markdown=True)
             ret = spark.getAllWebHooks()
@@ -1605,7 +1637,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     break
                 for h in ret['webhooks']:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="**Name(id)**: " + h['name'] + " (" + h['id'] + ")"
                                                                              "\n\n**Events**: " + h['resource'] + ":" +
                              h['event'] +
@@ -1620,7 +1652,7 @@ class spark_on_aw(on_aw.on_aw_base):
         elif msg_list[0] == '/deletewebhook' and responseRoomId == chatRoomId:
             if len(msg_list) != 2:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Usage `/deletewebook <webhookid>`.\n\nUse /listwebhooks to get the id."
                 )
             else:
@@ -1628,28 +1660,28 @@ class spark_on_aw(on_aw.on_aw_base):
                 ret = spark.unregisterWebHook(id=hookId)
                 if ret is not None:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="Deleted webhook: " + hookId
                     )
                 else:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="Was not able to delete webhook: " + hookId
                     )
         elif msg_list[0] == '/cleanwebhooks' and responseRoomId == chatRoomId:
+            myself.deleteProperty('firehoseId')
             spark.cleanAllWebhooks(id=responseRoomId)
-            self.myself.deleteProperty('firehoseId')
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text="Started cleaning up ALL webhooks.")
             hook = spark.registerWebHook(
                 name='Firehose',
-                target=self.config.root + self.myself.id + '/callbacks/firehose',
+                target=self.config.root + myself.id + '/callbacks/firehose',
                 resource='all',
                 event='all')
             if hook and hook['id']:
                 logging.debug('Successfully registered messages firehose webhook')
-                self.myself.setProperty('firehoseId', hook['id'])
+                myself.setProperty('firehoseId', hook['id'])
         elif msg_list[0] == '/countrooms' and responseRoomId == chatRoomId:
             out = "**Counting rooms...**\n\n----\n\n"
             next_rooms = spark.getRooms()
@@ -1662,13 +1694,13 @@ class spark_on_aw(on_aw.on_aw_base):
             else:
                 out += "**No rooms found**"
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text=out,
                 markdown=True)
         elif msg_list[0] == '/checkmember' and responseRoomId == chatRoomId:
             if len(msg_list) == 1:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Usage: `/checkmember <email>` to check room memberships for the email",
                     markdown=True)
                 self.webobj.request.set_status(204)
@@ -1676,14 +1708,14 @@ class spark_on_aw(on_aw.on_aw_base):
             else:
                 target = msg_list[1]
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text="**Room memberships for " + target + "**\n\n----\n\n",
                 markdown=True)
-            deferred.defer(check_member, self.myself.creator, target, spark)
+            deferred.defer(check_member, myself.creator, target, spark)
         elif msg_list[0] == '/deletemember' and responseRoomId == chatRoomId:
             if len(msg_list) < 3:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Usage: `/deletemember <email> <room-id>` to delete user with <email> from a room with <room-id>.",
                     markdown=True)
                 self.webobj.request.set_status(204)
@@ -1704,24 +1736,24 @@ class spark_on_aw(on_aw.on_aw_base):
                         res = spark.deleteMember(id=m['id'])
                         if res != None:
                             spark.postBotMessage(
-                                email=self.myself.creator,
+                                email=myself.creator,
                                 text="Deleted " + target + " from the room " + i,
                                 markdown=True)
                         else:
                             spark.postBotMessage(
-                                email=self.myself.creator,
+                                email=myself.creator,
                                 text="Delete failed from the room " + i,
                                 markdown=True)
                         break
                 if not found:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text=target + " was not found in room " + i,
                         markdown=True)
         elif msg_list[0] == '/addmember' and responseRoomId == chatRoomId:
             if len(msg_list) < 3:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Usage: `/addmember <email> <room-id>` to add user with <email> to a room with <room-id>.",
                     markdown=True)
                 self.webobj.request.set_status(204)
@@ -1732,12 +1764,12 @@ class spark_on_aw(on_aw.on_aw_base):
                 res = spark.addMember(id=i, email=msg_list[1])
                 if res != None:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="Added " + msg_list[1] + " to the room " + i,
                         markdown=True)
                 else:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="Failed adding " + msg_list[1] + " to room " + i,
                         markdown=True)
         elif msg_list[0] == '/get' and responseRoomId == chatRoomId:
@@ -1752,15 +1784,15 @@ class spark_on_aw(on_aw.on_aw_base):
                 msgs = store.loadMessages(nickname=nick)
                 if not msgs:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text='**No messages from ' +
                              nick + '**', markdown=True)
                 else:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text='-------- -------- --------- --------- ---------')
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text='**Messages from: ' +
                              nick + '**', markdown=True)
                     for msg in msgs:
@@ -1770,7 +1802,7 @@ class spark_on_aw(on_aw.on_aw_base):
                         text = msgContent['text']
                         room = spark.getRoom(msg["roomId"])
                         spark.postBotMessage(
-                            email=self.myself.creator,
+                            email=myself.creator,
                             text=msg["timestamp"].strftime('%c') + ' - (' + room['title'] + ')' + '\r\n' + text)
                     store.clearMessages(nickname=nick)
         elif msg_list[0] == '/listmembers' and responseRoomId != chatRoomId:
@@ -1799,32 +1831,32 @@ class spark_on_aw(on_aw.on_aw_base):
             if 'title' in room:
                 memberlist = "**Members in room: " + room['title'] + "**\n\n----\n\n" + memberlist
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text=memberlist, markdown=True)
         elif msg_list[0] == '/delete' and responseRoomId == chatRoomId:
             if len(msg_list) == 2 and msg_list[1] == 'deletenow':
-                on_aw_delete.on_aw_delete_actor(myself=myself, req=req, auth=auth)
-                self.myself.delete()
+                self.delete_actor()
+                myself.delete()
             else:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Usage: `/delete DELETENOW`", markdown=True)
         elif msg_list[0] == '/pins' and responseRoomId == chatRoomId:
             msgs = store.getPinnedMessages()
             if msgs:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="**Your Pinned Reminders (all times are in UTC)**\n\n----\n\n",
                     markdown=True)
             else:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="**You have no Pinned Reminders**",
                     markdown=True)
             for m in msgs:
                 if len(m["id"]) == 0:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="**" + m["timestamp"].strftime('%Y-%m-%d %H:%M') + "** -- " + m["comment"] + "\n\n----\n\n",
                         markdown=True)
                     continue
@@ -1832,7 +1864,7 @@ class spark_on_aw(on_aw.on_aw_base):
                 if not pin:
                     logging.warn('Not able to retrieve message data for pinned message ')
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="Not possible to retrieve pinned message details."
                     )
                     continue
@@ -1841,12 +1873,12 @@ class spark_on_aw(on_aw.on_aw_base):
                 if not person or not room:
                     logging.warn('Not able to retrieve person and room data for pinned message')
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="Not possible to retrieve pinned message person and room details."
                     )
                     continue
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="**" + m["timestamp"].strftime('%Y-%m-%d %H:%M') + "** -- " + m["comment"] + "\n\nFrom " +
                          person['displayName'] + " (" + person['emails'][0] + ")" + " in room (" + room[
                              'title'] + ")\n\n" +
@@ -1856,13 +1888,13 @@ class spark_on_aw(on_aw.on_aw_base):
             spark.deleteMessage(data['id'])
             if len(msg_list) != 3:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Usage: `/team init|add|remove|verify|sync team_name`", markdown=True)
                 self.webobj.request.set_status(204)
                 return True
             team_cmd = msg_list[1]
             team_name = msg_list[2]
-            team_str = self.myself.getProperty('team-' + team_name).value
+            team_str = myself.getProperty('team-' + team_name).value
             if not team_str:
                 team_list = []
             else:
@@ -1879,7 +1911,7 @@ class spark_on_aw(on_aw.on_aw_base):
             if 'items' not in members:
                 logging.info("Not able to retrieve members for room in /team")
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Not able to get members of room.")
                 self.webobj.request.set_status(204)
                 return True
@@ -1891,11 +1923,11 @@ class spark_on_aw(on_aw.on_aw_base):
                     out += "Added " + m['personEmail'] + "\n\n"
                     team_list.append(str(m['personEmail']))
                 if len(team_list) > 0:
-                    self.myself.setProperty('team-' + team_name, json.dumps(team_list))
+                    myself.setProperty('team-' + team_name, json.dumps(team_list))
             elif team_cmd == 'add' or team_cmd == 'remove' or team_cmd == 'verify' or team_cmd == 'sync':
                 if len(team_list) == 0:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="You tried to use /team with a non-existent team.")
                 else:
                     if team_cmd == 'add':
@@ -1926,7 +1958,7 @@ class spark_on_aw(on_aw.on_aw_base):
                         elif team_cmd == 'verify':
                             out += "Not in room, but in team: " + e + "\n\n"
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text=out,
                 markdown=True)
         elif msg_list[0] == '/copyroom' and responseRoomId != chatRoomId:
@@ -1967,47 +1999,47 @@ class spark_on_aw(on_aw.on_aw_base):
                 id=responseRoomId,
                 text="Created new room and added the same members as in this room.")
         elif msg_list[0] == '/box' and responseRoomId == chatRoomId:
-            box = self.myself.getPeerTrustee(shorttype='boxbasic')
+            box = myself.getPeerTrustee(shorttype='boxbasic')
             if not box:
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Failed to create new box service.")
                 self.webobj.request.set_status(204)
                 return True
             if len(msg_list) > 1:
-                boxRootId = self.myself.getProperty('boxRootId').value
+                boxRootId = myself.getProperty('boxRootId').value
                 if boxRootId:
                     spark.postBotMessage(
-                        email=self.myself.creator,
+                        email=myself.creator,
                         text="You have created the Box root folder in Box and started to use it. " \
                              "You must do /nobox before you can change root folder.")
                     self.webobj.request.set_status(204)
                     return True
                 boxRoot = msg_list_wcap[1]
             else:
-                boxRoot = self.myself.getProperty('boxRoot').value
+                boxRoot = myself.getProperty('boxRoot').value
                 if not boxRoot:
                     boxRoot = 'SparkRoomFolders'
-            self.myself.setProperty('boxRoot', boxRoot)
+            myself.setProperty('boxRoot', boxRoot)
             spark.postBotMessage(
-                email=self.myself.creator,
+                email=myself.creator,
                 text="Your box service is available and can be authorized at " + box['baseuri'] +
                      "/www\n\n" +
                      "Then use /boxfolder in group rooms to create new Box folders (created below the " +
                      boxRoot + " folder).")
         elif msg_list[0] == '/boxfolder' and responseRoomId != chatRoomId:
             # boxRoot is set when issueing the /box command
-            boxRoot = self.myself.getProperty('boxRoot').value
+            boxRoot = myself.getProperty('boxRoot').value
             if not boxRoot or len(boxRoot) == 0:
                 spark.postMessage(
                     id=responseRoomId,
                     text="You have not authorized the Box service. Go to the 1:1 bot room and do the /box command first.")
                 self.webobj.request.set_status(204)
                 return True
-            box = self.myself.getPeerTrustee(shorttype='boxbasic')
+            box = myself.getPeerTrustee(shorttype='boxbasic')
             proxy = aw_proxy.aw_proxy(peer_target=box)
             # boxRootId is set the first time a /boxfolder command is run
-            boxRootId = self.myself.getProperty('boxRootId').value
+            boxRootId = myself.getProperty('boxRootId').value
             if not boxRootId:
                 # Create the root folder
                 params = {
@@ -2018,7 +2050,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     params=params)
                 if rootFolder and 'id' in rootFolder:
                     boxRootId = rootFolder['id']
-                    self.myself.setProperty('boxRootId', boxRootId)
+                    myself.setProperty('boxRootId', boxRootId)
                 else:
                     if 'error' in rootFolder and rootFolder['error']['code'] == 401:
                         spark.postMessage(
@@ -2068,7 +2100,7 @@ class spark_on_aw(on_aw.on_aw_base):
             if emails and emails['items']:
                 params['emails'] = []
                 for item in emails['items']:
-                    if item['isMonitor'] or item['personEmail'] == self.myself.creator:
+                    if item['isMonitor'] or item['personEmail'] == myself.creator:
                         continue
                     params['emails'].append(item['personEmail'])
             folder = proxy.createResource(
@@ -2079,7 +2111,7 @@ class spark_on_aw(on_aw.on_aw_base):
             else:
                 url = 'No shared link available'
             if folder and 'id' in folder and 'error' not in folder:
-                sub = self.myself.createRemoteSubscription(
+                sub = myself.createRemoteSubscription(
                     peerid=box['peerid'],
                     target='resources',
                     subtarget='folders',
@@ -2112,7 +2144,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     text="You don't have a box folder for this room. Do /boxfolder [foldername] to" \
                          " create one. \n\nDefault folder name is the room name.")
             else:
-                box = self.myself.getPeerTrustee(shorttype='boxbasic')
+                box = myself.getPeerTrustee(shorttype='boxbasic')
                 proxy = aw_proxy.aw_proxy(peer_target=box)
                 if not proxy.deleteResource('resources/folders/' + room.boxFolderId):
                     spark.postMessage(
@@ -2124,18 +2156,18 @@ class spark_on_aw(on_aw.on_aw_base):
                         id=responseRoomId,
                         text="Disconnected the Box folder from this room. The Box folder was not deleted.")
         elif msg_list[0] == '/nobox' and responseRoomId == chatRoomId:
-            if not self.myself.deletePeerTrustee(shorttype='boxbasic'):
+            if not myself.deletePeerTrustee(shorttype='boxbasic'):
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Failed to delete box service.")
             else:
-                self.myself.deleteProperty('boxRoot')
-                self.myself.deleteProperty('boxRootId')
+                myself.deleteProperty('boxRoot')
+                myself.deleteProperty('boxRootId')
                 boxRooms = store.loadRooms()
                 for b in boxRooms:
                     store.deleteFromRoom(b.id, boxfolder=True)
                 spark.postBotMessage(
-                    email=self.myself.creator,
+                    email=myself.creator,
                     text="Deleted your box service.")
         self.webobj.response.set_status(204)
         return True

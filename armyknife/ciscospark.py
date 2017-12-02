@@ -241,6 +241,9 @@ class ciscospark():
             return None
         return self.auth.oauthDELETE(self.spark['webhook_uri'] + '/' + id)
 
+    def getWebHook(self, id):
+        return self.auth.oauthGET(self.spark['webhook_uri'] + "/" + id)
+
     def getAllWebHooks(self, max=100, uri=None):
         if uri:
             params = None

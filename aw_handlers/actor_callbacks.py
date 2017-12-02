@@ -20,7 +20,15 @@ class actor_callbacks(webapp2.RequestHandler):
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
-        self.response.write(self.obj.response.body)
+        template = None
+        if name == 'joinroom':
+            template = self.app.registry.get('template').get_template('spark-joinroom.html')
+        elif name == 'makefilepublic':
+            template = self.app.registry.get('template').get_template('spark-getattachment.html')
+        if template:
+            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
+        else:
+            self.response.write(self.obj.response.body)
 
     def put(self, id, name):
         self.init()
@@ -47,4 +55,12 @@ class actor_callbacks(webapp2.RequestHandler):
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
-        self.response.write(self.obj.response.body)
+        template = None
+        if name == 'joinroom':
+            template = self.app.registry.get('template').get_template(
+                self.obj.response.template_values["template_path"])
+            del self.obj.response.template_values["template_path"]
+        if template:
+            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
+        else:
+            self.response.write(self.obj.response.body)

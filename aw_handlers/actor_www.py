@@ -33,20 +33,20 @@ class actor_www(webapp2.RequestHandler):
             return
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
+        template = None
         if not path or path == '':
             template = self.app.registry.get('template').get_template('aw-actor-www-root.html')
-            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         elif path == 'init':
             template = self.app.registry.get('template').get_template('aw-actor-www-init.html')
-            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         elif path == 'properties':
             template = self.app.registry.get('template').get_template('aw-actor-www-properties.html')
-            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         elif path == 'property':
             template = self.app.registry.get('template').get_template('aw-actor-www-property.html')
-            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         elif path == 'trust':
             template = self.app.registry.get('template').get_template('aw-actor-www-trust.html')
+        elif path == 'getattachment':
+            template = self.app.registry.get('template').get_template('spark-getattachment.html')
+        if template:
             self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         else:
             self.response.write(self.obj.response.body)

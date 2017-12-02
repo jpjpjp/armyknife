@@ -2,20 +2,11 @@
 Getting Started
 ===============
 
-This actingwebdemo application is a full ActingWeb demo that uses the python
+This application is a full ActingWeb app that uses the python
 library actingweb.
 
-The actingweb library supports both AWS Dynamodb and Google Datastore as database
-backends, but this application is deployed to AWS as an Elastic Beanstalk
-application and can be found at https://actingwebdemo.greger.io
-
-Basically, the application.py uses the webapp2 framework to map all the endpoints
-required by an ActingWeb app and set up handlers (/aw_handlers) for each.
-Each handler takes the requests, copies into an actingweb request and calls
-the correct endpoint handler from the actingweb library.
-
-There is some boilerplate code, but it is fairly simple to replace webapp2 with
-flask or any other web app framework.
+It implements both a bot and an integration for Cisco Spark. This is the code running the official
+Spark Army Knife.
 
 Running locally
 ---------------
