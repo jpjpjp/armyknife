@@ -2173,12 +2173,12 @@ class spark_on_aw(on_aw.on_aw_base):
         return True
 
     @classmethod
-    def post_subscriptions(myself, req, auth, sub, peerid, data):
+    def post_subscriptions(self, sub, peerid, data):
         """Customizible function to process incoming callbacks/subscriptions/ callback with json body,
             return True if processed, False if not."""
         logging.debug("Got callback and processed " + sub["subscriptionid"] +
                       " subscription from peer " + peerid + " with json blob: " + json.dumps(data))
-        spark = ciscospark.ciscospark(auth, self.myself.id)
+        spark = ciscospark.ciscospark(self.auth, self.myself.id)
         if 'target' in data and data['target'] == 'properties':
             if 'subtarget' in data and data['subtarget'] == 'topofmind' and 'data' in data:
                 topofmind = data['data']
