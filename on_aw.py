@@ -6,6 +6,8 @@ import datetime
 import re
 import base64
 from actingweb import on_aw
+from actingweb import auth as auth_class
+from actingweb import aw_proxy
 from armyknife import ciscospark
 from armyknife import armyknife
 from actingweb import actor
@@ -1106,7 +1108,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     text="If you repeatedly get this error message, do /delete DELETENOW " \
                          "before a new /init. This will reset your account (note: all settings as well).")
                 logging.info("User (" + myself.creator + ") has invalid refresh token and got notified.")
-            req.response.set_status(202, "Accepted, but not processed")
+            self.webobj.response.set_status(202, "Accepted, but not processed")
             return True
         # This is a special section that uses firehose for all messages to retrieve pinned messages
         # to see if anything needs to be processed (for other actors than the one receiving the firehose)
@@ -1114,7 +1116,7 @@ class spark_on_aw(on_aw.on_aw_base):
         for m in due:
             pin_owner = actor.actor(id=m.actorId)
             auth2 = auth_class.auth(id=m.actorId)
-            spark2 = ciscospark.ciscospark(auth=auth2, actorId=m.actorId)
+            spark2 = ciscospark.ciscospark(auth=auth2, actorId=m.actorId, config=self.config)
             email_owner = pin_owner.getProperty(name='email').value
             if len(m.comment) == 0:
                 m.comment = "ARMY KNIFE REMINDER"
@@ -1711,7 +1713,7 @@ class spark_on_aw(on_aw.on_aw_base):
                 email=myself.creator,
                 text="**Room memberships for " + target + "**\n\n----\n\n",
                 markdown=True)
-            deferred.defer(check_member, myself.creator, target, spark)
+            check_member(myself.creator, target, spark)
         elif msg_list[0] == '/deletemember' and responseRoomId == chatRoomId:
             if len(msg_list) < 3:
                 spark.postBotMessage(
@@ -2178,7 +2180,7 @@ class spark_on_aw(on_aw.on_aw_base):
             return True if processed, False if not."""
         logging.debug("Got callback and processed " + sub["subscriptionid"] +
                       " subscription from peer " + peerid + " with json blob: " + json.dumps(data))
-        spark = ciscospark.ciscospark(self.auth, self.myself.id)
+        spark = ciscospark.ciscospark(auth=self.auth, actorId=self.myself.id, config=self.config)
         if 'target' in data and data['target'] == 'properties':
             if 'subtarget' in data and data['subtarget'] == 'topofmind' and 'data' in data:
                 topofmind = data['data']
