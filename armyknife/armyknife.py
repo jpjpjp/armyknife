@@ -1,6 +1,7 @@
 import uuid
 import time
 import datetime
+import pytz
 from actingweb import attribute
 
 
@@ -117,7 +118,7 @@ class armyknife():
             "personId": msg['personId'],
             "personEmail": msg['personEmail'],
             },
-            timestamp=datetime.datetime.now()
+            timestamp=datetime.datetime.utcnow()
         )
         return True
 
@@ -241,7 +242,7 @@ class armyknife():
     def deletePinnedMessages(self, comment=None):
         message_bucket = attribute.attributes("pinned", self.actorId, config=self.config)
         msgs = message_bucket.get_bucket()
-        for m, v in msgs:
+        for m, v in msgs.iteritems():
             # If comment is specified, only delete that message
             if comment and comment != v["data"]["comment"]:
                 continue
@@ -252,19 +253,22 @@ class armyknife():
 
     def getDuePinnedMessages(self):
         # Here keep auto-reminders
-        now = time.time()
-        message_bucket = attribute.attributes("pinned", config=self.config)
-        msgs = message_bucket.get_bucket()
+        now = datetime.datetime.utcnow()
+        now = now.replace(tzinfo=pytz.utc)
+        message_bucket = attribute.buckets("pinned", config=self.config)
+        msgs = message_bucket.fetch()
         ret = []
         if not msgs:
             return ret
-        for m, v in msgs:
-            if m <= now:
-                ret.append({
-                    "actorId": v["data"]["actorId"],
-                    "id": v["data"]["id"],
-                    "comment": v["data"]["comment"],
-                    "timestamp": v["timestamp"]
-                })
-                message_bucket.delete_attr(m)
+        for m, v in msgs.iteritems():
+            for a, b in v.iteritems():
+                if b["timestamp"] <= now:
+                    ret.append({
+                        "actorId": m,
+                        "id": b["data"]["id"],
+                        "comment": b["data"]["comment"],
+                        "timestamp": b["timestamp"]
+                    })
+                    del_msg = attribute.attributes("pinned", m, config=self.config)
+                    del_msg.delete_attr(a)
         return ret

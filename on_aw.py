@@ -776,7 +776,7 @@ class spark_on_aw(on_aw.on_aw_base):
                             return True
                         if index:
                             listitem = msg['text'][len(msg_list_wcap[0]) + len(msg_list_wcap[1]) + 2:]
-                            now = datetime.datetime.now()
+                            now = datetime.datetime.utcnow()
                             myself.setProperty('topofmind_modified', now.strftime('%Y-%m-%d %H:%M'))
                             if listitem == "delete":
                                 del (toplist[index])
@@ -975,24 +975,29 @@ class spark_on_aw(on_aw.on_aw_base):
 
     @classmethod
     def actions_on_oauth_success(self):
-        spark = ciscospark.ciscospark(auth=self.auth, actorId=self.myself.id, config=self.config)
-        email = self.myself.getProperty('email').value
-        hookId = self.myself.getProperty('firehoseId').value
-        self.myself.deleteProperty('token_invalid')
-        self.myself.deleteProperty('service_status')
+        if not self.myself:
+            logging.debug("Got a firehose callback for an unknown user.")
+            return True
+        else:
+            myself=self.myself
+        spark = ciscospark.ciscospark(auth=self.auth, actorId=myself.id, config=self.config)
+        email = myself.getProperty('email').value
+        hookId = myself.getProperty('firehoseId').value
+        myself.deleteProperty('token_invalid')
+        myself.deleteProperty('service_status')
         if not hookId or not spark.getWebHook(hookId):
             msghash = hashlib.sha256()
-            msghash.update(self.myself.passphrase)
-            hook = spark.registerWebHook(name='Firehose', target=self.config.root + self.myself.id + '/callbacks/firehose',
+            msghash.update(myself.passphrase)
+            hook = spark.registerWebHook(name='Firehose', target=self.config.root + myself.id + '/callbacks/firehose',
                                          resource='all', event='all',
                                          secret=msghash.hexdigest())
             if hook and hook['id']:
                 logging.debug('Successfully registered messages firehose webhook')
-                self.myself.setProperty('firehoseId', hook['id'])
+                myself.setProperty('firehoseId', hook['id'])
             else:
                 logging.debug('Failed to register messages firehose webhook')
                 spark.postAdminMessage(text='Failed to register firehose: ' + email)
-        chatRoom = self.myself.getProperty('chatRoomId').value
+        chatRoom = myself.getProperty('chatRoomId').value
         if not chatRoom:
             msg = spark.postBotMessage(
                 email=email,
@@ -1002,7 +1007,7 @@ class spark_on_aw(on_aw.on_aw_base):
             if not msg or 'roomId' not in msg:
                 logging.warn("Not able to create 1:1 bot room after oauth success.")
                 return False
-            self.myself.setProperty('chatRoomId', msg['roomId'])
+            myself.setProperty('chatRoomId', msg['roomId'])
         else:
             spark.postBotMessage(
                 roomId=chatRoom,
@@ -1082,7 +1087,7 @@ class spark_on_aw(on_aw.on_aw_base):
             responseRoomId = data['roomId']
         else:
             responseRoomId = chatRoomId
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         myOauthId = myself.getProperty('oauthId').value
         if myself.getProperty('autoreplyMsg').value:
             reply_msg = "Via armyknife@sparkbot.io auto-reply:\n\n" + myself.getProperty('autoreplyMsg').value
@@ -1114,14 +1119,14 @@ class spark_on_aw(on_aw.on_aw_base):
         # to see if anything needs to be processed (for other actors than the one receiving the firehose)
         due = store.getDuePinnedMessages()
         for m in due:
-            pin_owner = actor.actor(id=m.actorId)
-            auth2 = auth_class.auth(id=m.actorId)
-            spark2 = ciscospark.ciscospark(auth=auth2, actorId=m.actorId, config=self.config)
+            pin_owner = actor.actor(id=m["actorId"], config=self.config)
+            auth2 = auth_class.auth(id=m["actorId"], config=self.config)
+            spark2 = ciscospark.ciscospark(auth=auth2, actorId=m["actorId"], config=self.config)
             email_owner = pin_owner.getProperty(name='email').value
-            if len(m.comment) == 0:
-                m.comment = "ARMY KNIFE REMINDER"
-            if m.id and len(m.id) > 0:
-                pin = spark2.getMessage(id=m.id)
+            if len(m["comment"]) == 0:
+                m["comment"] = "ARMY KNIFE REMINDER"
+            if m["id"] and len(m["id"]) > 0:
+                pin = spark2.getMessage(id=m["id"])
                 if not pin:
                     logging.warn('Not able to retrieve message data for pinned message')
                     spark2.postBotMessage(
@@ -1146,7 +1151,7 @@ class spark_on_aw(on_aw.on_aw_base):
                          pin['text'] + "\n\n",
                     markdown=True)
             else:
-                if m.comment == '#/TOPOFMIND':
+                if m["comment"] == '#/TOPOFMIND':
                     topofmind = pin_owner.getProperty('topofmind').value
                     if topofmind:
                         try:
@@ -1170,12 +1175,12 @@ class spark_on_aw(on_aw.on_aw_base):
                             text=out,
                             markdown=True)
                     spark2.deletePinnedMessages(comment="#/TOPOFMIND")
-                    targettime = m.timestamp + datetime.timedelta(days=1)
+                    targettime = m["timestamp"] + datetime.timedelta(days=1)
                     spark2.savePinnedMessage(comment='#/TOPOFMIND', timestamp=targettime)
                 else:
                     spark2.postBotMessage(
                         email=email_owner,
-                        text="**PIN ALERT!! - " + m.comment + "**",
+                        text="**PIN ALERT!! - " + m["comment"] + "**",
                         markdown=True)
         if 'X-Spark-Signature' in self.webobj.request.headers:
             sign = self.webobj.request.headers['X-Spark-Signature']
@@ -1437,7 +1442,7 @@ class spark_on_aw(on_aw.on_aw_base):
                                             text="Deleted the trust relationship.")
             if body['resource'] == 'memberships':
                 if body['event'] == 'created' and ('personEmail' in data and data['personEmail'] == myself.creator):
-                    room = store.getRoom(data['roomId'])
+                    room = spark.getRoom(data['roomId'])
                     if room and 'title' in room:
                         no_alert = myself.getProperty('no_newrooms').value
                         if not no_alert or no_alert.lower() != 'true':
