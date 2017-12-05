@@ -1145,7 +1145,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     continue
                 spark2.postBotMessage(
                     email=email_owner,
-                    text="**PIN ALERT!! - " + m.comment + "**\n\n" \
+                    text="**PIN ALERT!! - " + m["comment"] + "**\n\n" \
                                                           "From " + person['displayName'] + " (" + person['emails'][
                              0] + ")" + " in room (" + room['title'] + ")\n\n" +
                          pin['text'] + "\n\n",
