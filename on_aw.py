@@ -1024,9 +1024,10 @@ class spark_on_aw(on_aw.on_aw_base):
             if not room:
                 self.webobj.response.set_status(404)
                 return True
+            roominfo = spark.getRoom(room['id'])
             self.webobj.response.template_values = {
                 'id': uuid,
-                'title': room.title,
+                'title': roominfo['title'],
             }
         if name == 'makefilepublic':
             pass
@@ -1065,19 +1066,20 @@ class spark_on_aw(on_aw.on_aw_base):
             uuid = self.webobj.request.get('id')
             email = self.webobj.request.get('email')
             room = store.loadRoomByUuid(uuid)
+            roominfo = spark.getRoom(room['id'])
             self.webobj.response.template_values = {
-                'title': room.title,
+                'title': roominfo['title'],
             }
-            if not store.addMember(id=room.id, email=email):
+            if not spark.addMember(id=room['id'], email=email):
                 spark.postBotMessage(
                     email=myself.creator,
                     text="Failed adding new member " +
-                         email + " to room " + room.title)
+                         email + " to room " + roominfo['title'])
                 self.webobj.response.template_values["template_path"] = 'spark-joinedroom-failed.html'
             else:
                 spark.postBotMessage(
                     email=myself.creator,
-                    text="Added new member " + email + " to room " + room.title)
+                    text="Added new member " + email + " to room " + roominfo['title'])
                 self.webobj.response.template_values["template_path"] = 'spark-joinedroom.html'
             return True
         # Handle json POSTs below

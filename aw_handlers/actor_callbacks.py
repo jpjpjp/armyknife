@@ -20,6 +20,8 @@ class actor_callbacks(webapp2.RequestHandler):
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
+        if self.obj.response.status_code == 404:
+            return
         template = None
         if name == 'joinroom':
             template = self.app.registry.get('template').get_template('spark-joinroom.html')

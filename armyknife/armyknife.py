@@ -81,13 +81,15 @@ class armyknife():
     def loadRoomByUuid(self, uuid):
         bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
         rooms = bucket.get_bucket()
-        for k,v in rooms:
+        for k,v in rooms.iteritems():
             if v["data"]["uuid"] == uuid:
-                return {
+                ret = {
                     'id': k,
                     'uuid': v["data"]["uuid"],
-                    'boxFolderId': v["data"]["boxfolderId"],
                 }
+                if 'boxFolderId' in v["data"]:
+                    ret['boxFolderId'] = v["data"]["boxfolderId"]
+                return ret
         return None
 
     def loadRoomByBoxFolderId(self, folder_id):
