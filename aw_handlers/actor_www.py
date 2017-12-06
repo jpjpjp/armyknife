@@ -1,7 +1,7 @@
 import webapp2
 from actingweb import aw_web_request
 from actingweb.handlers import www
-
+import on_aw
 
 class actor_www(webapp2.RequestHandler):
 
@@ -18,7 +18,7 @@ class actor_www(webapp2.RequestHandler):
             body=self.request.body,
             headers=self.request.headers,
             cookies=cookies)
-        self.handler = www.www_handler(self.obj, self.app.registry.get('config'))
+        self.handler = www.www_handler(self.obj, self.app.registry.get('config'), on_aw=on_aw.spark_on_aw())
 
     def get(self, id, path):
         self.init()
