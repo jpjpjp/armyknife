@@ -1781,7 +1781,7 @@ class spark_on_aw(on_aw.on_aw_base):
                 trackers = store.loadTrackers()
                 nicknames = []
                 for tracker in trackers:
-                    nicknames.append(tracker.nickname)
+                    nicknames.append(tracker["nickname"])
             else:
                 nicknames = [msg_list[1]]
             for nick in nicknames:
