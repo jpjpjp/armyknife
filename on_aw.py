@@ -2064,7 +2064,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     elif 'error' in rootFolder and rootFolder['error']['code'] == 409:
                         spark.postMessage(
                             id=responseRoomId,
-                            text="The folder already exists in Box. Choose a different name (/boxfolder anothername)")
+                            text="The folder already exists in Box. Delete it, or choose a different name root folder (/nobox, then /box anothername)")
                     elif 'error' in rootFolder and rootFolder['error']['code'] != 401:
                         spark.postMessage(
                             id=responseRoomId,
@@ -2150,7 +2150,7 @@ class spark_on_aw(on_aw.on_aw_base):
                          " create one. \n\nDefault folder name is the room name.")
             else:
                 box = myself.getPeerTrustee(shorttype='boxbasic')
-                proxy = aw_proxy.aw_proxy(peer_target=box)
+                proxy = aw_proxy.aw_proxy(peer_target=box, config=self.config)
                 if not proxy.deleteResource('resources/folders/' + room.boxFolderId):
                     spark.postMessage(
                         id=responseRoomId,
