@@ -74,6 +74,8 @@ def set_config():
             actors=actors,
             force_email_prop_as_creator=True,
             unique_creator=True,
+            default_relationship="associate",
+            auto_accept_default_relationship=True,
             www_auth="oauth",
             ui=True,
             bot={

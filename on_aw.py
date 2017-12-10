@@ -1048,7 +1048,8 @@ class spark_on_aw(on_aw.on_aw_base):
             return True
         else:
             myself=self.myself
-        spark = ciscospark.ciscospark(auth=self.auth, actorId=myself.id, config=self.config)
+            auth = self.auth
+        spark = ciscospark.ciscospark(auth=auth, actorId=myself.id, config=self.config)
         store = armyknife.armyknife(actorId=myself.id, config=self.config)
         logging.debug("Callback body: " + self.webobj.request.body.decode('utf-8', 'ignore'))
         chatRoomId = myself.getProperty('chatRoomId').value
@@ -1099,7 +1100,7 @@ class spark_on_aw(on_aw.on_aw_base):
         if not service_status:
             myself.setProperty('service_status', 'firehose')
         # validateOAuthToken() returns the redirect URL if token cannot be refreshed
-        if len(self.auth.validateOAuthToken(lazy=True)) > 0:
+        if len(auth.validateOAuthToken(lazy=True)) > 0:
             if not service_status or service_status != 'invalid':
                 myself.setProperty('service_status', 'invalid')
             logging.info("Was not able to automatically refresh token.")
@@ -1325,7 +1326,7 @@ class spark_on_aw(on_aw.on_aw_base):
                                 # myself is now the owner of the topofmind
                                 # data['personEmail'] is the person wanting to subscribe
                                 subscriber_email = data['personEmail']
-                                subscriber = actor.actor()
+                                subscriber = actor.actor(config=self.config)
                                 subscriber.get_from_property(name='email', value=subscriber_email)
                                 if not subscriber.id:
                                     spark.postBotMessage(
@@ -1379,7 +1380,7 @@ class spark_on_aw(on_aw.on_aw_base):
                                 # myself is now the owner of the topofmind
                                 # data['personEmail'] is the person wanting to unsubscribe
                                 subscriber_email = data['personEmail']
-                                subscriber = actor.actor()
+                                subscriber = actor.actor(config=self.config)
                                 subscriber.get_from_property(name='email', value=subscriber_email)
                                 if not subscriber.id:
                                     spark.postBotMessage(
