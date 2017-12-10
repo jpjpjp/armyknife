@@ -1436,7 +1436,7 @@ class spark_on_aw(on_aw.on_aw_base):
                     self.webobj.response.set_status(204)
                     return True
                 room = store.loadRoom(data['roomId'])
-                if room and room.boxFolderId:
+                if room and room["boxFolderId"]:
                     box = myself.getPeerTrustee(shorttype='boxbasic')
                     proxy = aw_proxy.aw_proxy(peer_target=box)
                     if body['event'] == 'created':
@@ -1456,13 +1456,13 @@ class spark_on_aw(on_aw.on_aw_base):
                                 },
                             ],
                         }
-                    proxy.changeResource(path='resources/folders/' + room.boxFolderId, params=params)
+                    proxy.changeResource(path='resources/folders/' + room["boxFolderId"], params=params)
                     if proxy.last_response_code < 200 or proxy.last_response_code > 299:
                         logging.warn('Unable to add/remove collaborator(' + data['personEmail'] +
-                                     ') to Box folder(' + room.boxFolderId + ')')
+                                     ') to Box folder(' + room["boxFolderId"] + ')')
                     else:
                         logging.debug('Added/removed collaborator(' + data['personEmail'] +
-                                      ') to Box folder(' + room.boxFolderId + ')')
+                                      ') to Box folder(' + room["boxFolderId"] + ')')
         # Below here we only handle messages:created events, so don't process anything else
         if body['resource'] != 'messages' or body['event'] != 'created':
             self.webobj.response.set_status(204)
@@ -2076,8 +2076,8 @@ class spark_on_aw(on_aw.on_aw_base):
                     self.webobj.response.set_status(204)
                     return True
             room = store.loadRoom(responseRoomId)
-            if room and len(room.boxFolderId) > 0:
-                folder = proxy.getResource('resources/folders/' + room.boxFolderId)
+            if room and len(room["boxFolderId"]) > 0:
+                folder = proxy.getResource('resources/folders/' + room["boxFolderId"])
                 if folder and 'url' in folder:
                     spark.postMessage(
                         id=responseRoomId,
@@ -2151,7 +2151,7 @@ class spark_on_aw(on_aw.on_aw_base):
             else:
                 box = myself.getPeerTrustee(shorttype='boxbasic')
                 proxy = aw_proxy.aw_proxy(peer_target=box, config=self.config)
-                if not proxy.deleteResource('resources/folders/' + room.boxFolderId):
+                if not proxy.deleteResource('resources/folders/' + room["boxFolderId"]):
                     spark.postMessage(
                         id=responseRoomId,
                         text="Failed to disconnect the Box folder from this room.")
