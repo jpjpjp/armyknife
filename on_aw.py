@@ -1049,9 +1049,10 @@ class spark_on_aw(on_aw.on_aw_base):
         else:
             myself=self.myself
             auth = self.auth
+            webobj = self.webobj
         spark = ciscospark.ciscospark(auth=auth, actorId=myself.id, config=self.config)
         store = armyknife.armyknife(actorId=myself.id, config=self.config)
-        logging.debug("Callback body: " + self.webobj.request.body.decode('utf-8', 'ignore'))
+        logging.debug("Callback body: " + webobj.request.body.decode('utf-8', 'ignore'))
         chatRoomId = myself.getProperty('chatRoomId').value
         # Clean up any actor creations from earlier where we got wrong creator email
         if myself.creator == self.config.bot['email'] or myself.creator == "creator":
@@ -1060,7 +1061,7 @@ class spark_on_aw(on_aw.on_aw_base):
                 myself.modify(creator=my_email)
         # Deprecated support for /callbacks/room
         if name == 'room':
-            self.response.set_status(404)
+            self.webobj.response.set_status(404)
             return True
         # non-json POSTs to be handled first
         if name == 'joinroom':
@@ -1185,14 +1186,14 @@ class spark_on_aw(on_aw.on_aw_base):
                         email=email_owner,
                         text="**PIN ALERT!! - " + m["comment"] + "**",
                         markdown=True)
-        if 'X-Spark-Signature' in self.webobj.request.headers:
-            sign = self.webobj.request.headers['X-Spark-Signature']
+        if 'X-Spark-Signature' in webobj.request.headers:
+            sign = webobj.request.headers['X-Spark-Signature']
         else:
             sign = None
         if sign and len(sign) > 0:
             myhash = hashlib.sha256()
             myhash.update(myself.passphrase)
-            msghash = hmac.new(myhash.hexdigest(), self.webobj.request.body, digestmod=hashlib.sha1)
+            msghash = hmac.new(myhash.hexdigest(), webobj.request.body, digestmod=hashlib.sha1)
             if msghash.hexdigest() == sign:
                 logging.debug('Signature matches')
             else:
