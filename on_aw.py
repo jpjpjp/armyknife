@@ -220,7 +220,7 @@ class spark_on_aw(on_aw.on_aw_base):
         store.clearMessages(email=self.myself.creator)
         trackers = store.loadTrackers()
         for tracker in trackers:
-            store.deleteTracker(tracker.email)
+            store.deleteTracker(tracker["email"])
         chatRoom = self.myself.getProperty('chatRoomId')
         if chatRoom and chatRoom.value:
             spark.postMessage(
