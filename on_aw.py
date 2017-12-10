@@ -1770,6 +1770,13 @@ class spark_on_aw(on_aw.on_aw_base):
                         text="Failed adding " + msg_list[1] + " to room " + i,
                         markdown=True)
         elif msg_list[0] == '/get' and responseRoomId == chatRoomId:
+            if len(msg_list) == 1:
+                spark.postBotMessage(
+                    email=myself.creator,
+                    text="Usage: `/get <all|nickname>` to get messages from all or from a special nickname.",
+                    markdown=True)
+                self.webobj.response.set_status(204)
+                return True
             if len(msg_list) == 2 and msg_list[1] == 'all':
                 trackers = store.loadTrackers()
                 nicknames = []
