@@ -2042,7 +2042,7 @@ class spark_on_aw(on_aw.on_aw_base):
                 self.webobj.response.set_status(204)
                 return True
             box = myself.getPeerTrustee(shorttype='boxbasic')
-            proxy = aw_proxy.aw_proxy(peer_target=box)
+            proxy = aw_proxy.aw_proxy(peer_target=box, config=self.config)
             # boxRootId is set the first time a /boxfolder command is run
             boxRootId = myself.getProperty('boxRootId').value
             if not boxRootId:
