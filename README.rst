@@ -2,8 +2,7 @@
 Getting Started
 ===============
 
-This application is a full ActingWeb app that uses the python
-library actingweb.
+This application is a full ActingWeb app that uses the python library actingweb.
 
 It implements both a bot and an integration for Cisco Spark. This is the code running the official
 Spark Army Knife.
