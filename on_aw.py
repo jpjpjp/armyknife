@@ -427,12 +427,11 @@ class spark_on_aw(on_aw.on_aw_base):
                 # Direct commands
                 if data['roomType'] == 'direct':
                     if not self.myself or not self.myself.id:
-                        # DISABLE
-                        continue
-                        migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + personObject,
-                                               headers={
-                                                   'Authorization': 'Bearer 65kN%57ItPNSQVHS',
-                                               })
+                        migrate = None
+                        #migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + personObject,
+                        #                       headers={
+                        #                          'Authorization': 'Bearer 65kN%57ItPNSQVHS',
+                        #                       })
                         if migrate:
                             properties = migrate.json()
                             myself = actor.actor(config=self.config)
