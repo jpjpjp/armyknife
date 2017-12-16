@@ -5,6 +5,7 @@ import hmac
 import datetime
 import re
 import base64
+import requests
 from actingweb import on_aw
 from actingweb import auth as auth_class
 from actingweb import aw_proxy
@@ -976,7 +977,7 @@ class spark_on_aw(on_aw.on_aw_base):
     @classmethod
     def actions_on_oauth_success(self):
         if not self.myself:
-            logging.debug("Got a firehose callback for an unknown user.")
+            logging.debug("Got an oauth success on_aw for an unknown user.")
             return True
         else:
             myself=self.myself
@@ -1043,11 +1044,31 @@ class spark_on_aw(on_aw.on_aw_base):
 
     @classmethod
     def post_callbacks(self, name):
-        if not self.myself:
-            logging.debug("Got a firehose callback for an unknown user.")
-            return True
+        if not self.myself or not self.myself.id:
+            email = json.loads(self.webobj.request.body.decode('utf-8', 'ignore'))['data'][
+                'personEmail']
+            migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + email,
+                                   headers={
+                                       'Authorization': 'Bearer 65kN%57ItPNSQVHS',
+                                   })
+            if migrate:
+                properties = migrate.json()
+                myself = actor.actor(config=self.config)
+                myself.create(url=self.webobj.request.url, passphrase=self.config.newToken(), creator=email)
+                for p, v in properties.iteritems():
+                    if p == 'migrated':
+                        continue
+                    try:
+                        v = json.dumps(v)
+                    except:
+                        pass
+                    myself.setProperty(p, v)
+                self.myself = myself
+            else:
+                logging.debug("Got a firehose callback for an unknown user.")
+                return True
         else:
-            myself=self.myself
+            myself = self.myself
             auth = self.auth
             webobj = self.webobj
         spark = ciscospark.ciscospark(auth=auth, actorId=myself.id, config=self.config)

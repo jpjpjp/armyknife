@@ -7,5 +7,6 @@ pynamodb
 urlfetch
 logging
 pytz
+requests
 actingweb
 #pydevd
