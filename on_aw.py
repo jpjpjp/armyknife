@@ -535,34 +535,10 @@ class spark_on_aw(on_aw.on_aw_base):
                                 text="Was not able to add tracking of " + msg_list[1])
                     elif cmd == '/myurl':
                         if not myself.id:
-                            email = json.loads(self.webobj.request.body.decode('utf-8', 'ignore'))['data'][
-                                'personEmail']
-                            migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + email,
-                                                   headers={
-                                                       'Authorization': 'Bearer 65kN%57ItPNSQVHS',
-                                                   })
-                            if migrate:
-                                properties = migrate.json()
-                                myself = actor.actor(config=self.config)
-                                myself.create(url=self.webobj.request.url, passphrase=self.config.newToken(),
-                                              creator=email)
-                                for p, v in properties.iteritems():
-                                    if p == 'migrated':
-                                        continue
-                                    try:
-                                        v = json.dumps(v)
-                                    except:
-                                        pass
-                                    myself.setProperty(p, v)
-                                spark.postBotMessage(
-                                    email=personObject,
-                                    text="Successfully migrated.",
-                                    markdown=True)
-                            else:
-                                spark.postBotMessage(
-                                    email=personObject,
-                                    text="Not able to find you as a user. Please do /init",
-                                    markdown=True)
+                            spark.postBotMessage(
+                                email=personObject,
+                                text="Not able to find you as a user. Please do /init",
+                                markdown=True)
                             return True
                         firehose = myself.getProperty('firehoseId').value
                         if not firehose:
@@ -1088,6 +1064,7 @@ class spark_on_aw(on_aw.on_aw_base):
                         pass
                     myself.setProperty(p, v)
                 self.myself = myself
+                logging.debug("Successfully migrated " + email)
             else:
                 logging.debug("Got a firehose callback for an unknown user.")
                 return True
