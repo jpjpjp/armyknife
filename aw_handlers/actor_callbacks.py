@@ -55,7 +55,7 @@ class actor_callbacks(webapp2.RequestHandler):
         self.init()
         myself = actor.actor(id=id, config=self.app.registry.get('config'))
         if not myself or not myself.id:
-            email = self.request.body.decode('utf-8', 'ignore')['data']['personEmail']
+            email = json.loads(self.request.body.decode('utf-8', 'ignore'))['data']['personEmail']
             migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + email,
                                    headers={
                                       'Authorization': 'Bearer 65kN%57ItPNSQVHS',
