@@ -1531,7 +1531,7 @@ class spark_on_aw(on_aw.on_aw_base):
                 if len(msg_list) > 3:
                     comment = msg['text'][len(msg_list[0]) + len(msg_list[1]) + len(msg_list[2]) + 3:]
                 if '+' in msg_list[2]:
-                    deltalist = re.split('[m|h|d[w]', msg_list[2][1:])
+                    deltalist = re.split('[mhdw]', msg_list[2][1:])
                     if deltalist:
                         delta = int(deltalist[0])
                     else:
@@ -2205,6 +2205,7 @@ class spark_on_aw(on_aw.on_aw_base):
         logging.debug("Got callback and processed " + sub["subscriptionid"] +
                       " subscription from peer " + peerid + " with json blob: " + json.dumps(data))
         spark = ciscospark.ciscospark(auth=self.auth, actorId=self.myself.id, config=self.config)
+        store = armyknife.armyknife(actorId=self.myself.id, config=self.config)
         if 'target' in data and data['target'] == 'properties':
             if 'subtarget' in data and data['subtarget'] == 'topofmind' and 'data' in data:
                 topofmind = data['data']
