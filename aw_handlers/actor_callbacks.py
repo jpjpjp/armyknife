@@ -1,9 +1,5 @@
 import webapp2
-import json
-import requests
-import logging
 from actingweb import aw_web_request
-from actingweb import actor
 from actingweb.handlers import callbacks
 import on_aw
 
@@ -56,26 +52,6 @@ class actor_callbacks(webapp2.RequestHandler):
 
     def post(self, id, name):
         self.init()
-        myself = actor.actor(id=id, config=self.app.registry.get('config'))
-        if not myself or not myself.id:
-            email = json.loads(self.request.body.decode('utf-8', 'ignore'))['data']['personEmail']
-            migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + email,
-                                   headers={
-                                      'Authorization': 'Bearer 65kN%57ItPNSQVHS',
-                                   })
-            if migrate:
-                properties = migrate.json()
-                myself = actor.actor(config=self.app.registry.get('config'))
-                myself.create(url=self.request.url, passphrase=self.app.registry.get('config').newToken(), creator=email)
-                for p, v in properties.iteritems():
-                    if p == 'migrated':
-                        continue
-                    try:
-                        v = json.dumps(v)
-                    except:
-                        pass
-                    myself.setProperty(p, v)
-                logging.debug("Successfully migrated " + email)
         # Process the request
         self.handler.post(id, name)
         # Pass results back to webapp2
