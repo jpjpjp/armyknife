@@ -64,7 +64,7 @@ class actor_callbacks(webapp2.RequestHandler):
                                    })
             if migrate:
                 properties = migrate.json()
-                myself = actor.actor(config=self.app.registry.get('config').newToken())
+                myself = actor.actor(config=self.app.registry.get('config'))
                 myself.create(url=self.request.url, passphrase=self.app.registry.get('config').newToken(), creator=email)
                 for p, v in properties.iteritems():
                     if p == 'migrated':
