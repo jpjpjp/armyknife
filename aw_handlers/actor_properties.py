@@ -3,47 +3,49 @@ from actingweb.handlers import properties
 
 import webapp2
 
-class actor_properties(webapp2.RequestHandler):
+
+# noinspection PyAttributeOutsideInit
+class ActorProperties(webapp2.RequestHandler):
 
     def init(self):
-        self.obj=aw_web_request.aw_webobj(
+        self.obj = aw_web_request.AWWebObj(
             url=self.request.url,
             params=self.request.params,
             body=self.request.body,
             headers=self.request.headers)
-        self.handler = properties.properties_handler(self.obj, self.app.registry.get('config'))
+        self.handler = properties.PropertiesHandler(self.obj, self.app.registry.get('config'))
 
-    def get(self, id, name):
+    def get(self, actor_id, name):
         self.init()
         # Process the request
-        self.handler.get(id, name)
+        self.handler.get(actor_id, name)
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
         self.response.write(self.obj.response.body)
 
-    def put(self, id, name):
+    def put(self, actor_id, name):
         self.init()
         # Process the request
-        self.handler.put(id, name)
+        self.handler.put(actor_id, name)
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
         self.response.write(self.obj.response.body)
 
-    def post(self, id, name):
+    def post(self, actor_id, name):
         self.init()
         # Process the request
-        self.handler.post(id, name)
+        self.handler.post(actor_id, name)
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
         self.response.write(self.obj.response.body)
 
-    def delete(self, id, name):
+    def delete(self, actor_id, name):
         self.init()
         # Process the request
-        self.handler.delete(id, name)
+        self.handler.delete(actor_id, name)
         # Pass results back to webapp2
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers

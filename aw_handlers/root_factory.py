@@ -3,16 +3,16 @@ from actingweb import aw_web_request
 from actingweb.handlers import factory
 
 
-class root_factory(webapp2.RequestHandler):
+# noinspection PyAttributeOutsideInit
+class RootFactory(webapp2.RequestHandler):
 
     def init(self):
-        self.obj=aw_web_request.aw_webobj(
+        self.obj = aw_web_request.AWWebObj(
             url=self.request.url,
             params=self.request.params,
             body=self.request.body,
             headers=self.request.headers)
-        self.handler = factory.root_factory_handler(self.obj, self.app.registry.get('config'))
-
+        self.handler = factory.RootFactoryHandler(self.obj, self.app.registry.get('config'))
 
     def get(self):
         self.init()

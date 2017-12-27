@@ -1,9 +1,8 @@
 __all__ = [
     "root_factory",
-    "devtest",
+    "devtests",
     "callback_oauth",
-    "bot",
-    "aw_web_request",
+    "bots",
     "actor_www",
     "actor_trust",
     "actor_subscription",

@@ -7,20 +7,20 @@ from actingweb import attribute
 
 class armyknife():
 
-    def __init__(self, actorId=None, config=None):
+    def __init__(self, actor_id=None, config=None):
         self.autoReminderPrefix = "#/"
-        self.actorId = actorId
+        self.actor_id = actor_id
         self.config = config
 
     def loadRoom(self, id):
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         room = bucket.get_attr(name=id)
         if room and 'data' in room:
             return room["data"]
         return None
 
     def loadRooms(self):
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         return bucket.get_bucket()
 
     def addUUID2room(self, roomId):
@@ -39,7 +39,7 @@ class armyknife():
         """
         if not roomId:
             return None
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         room = bucket.get_attr(name=roomId)
         if not room:
             room = {}
@@ -53,7 +53,7 @@ class armyknife():
     def deleteFromRoom(self, roomId=None, uuid=False, boxfolder=False):
         if not roomId:
             return False
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         room = bucket.get_attr(roomId)["data"]
         if not room:
             return False
@@ -70,16 +70,16 @@ class armyknife():
         return True
 
     def deleteRooms(self):
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         bucket.delete_bucket()
         return True
 
     def deleteRoom(self, roomId):
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         return bucket.delete_attr(roomId)
 
     def loadRoomByUuid(self, uuid):
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         rooms = bucket.get_bucket()
         for k,v in rooms.iteritems():
             if v["data"]["uuid"] == uuid:
@@ -93,7 +93,7 @@ class armyknife():
         return None
 
     def loadRoomByBoxFolderId(self, folder_id):
-        bucket = attribute.attributes(actorId=self.actorId, bucket="rooms", config=self.config)
+        bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         rooms = bucket.get_bucket()
         for k,v in rooms:
             if v["data"]["boxFolderId"] == folder_id:
@@ -108,11 +108,11 @@ class armyknife():
         if not msg:
             return False
         # Is this message from a registered person to track?
-        person_bucket = attribute.attributes(actorId=self.actorId, bucket="persons", config=self.config)
+        person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
         person = person_bucket.get_attr(msg['personEmail'])
         if not person:
             return False
-        message_bucket = attribute.attributes(actorId=self.actorId, bucket="messages", config=self.config)
+        message_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="messages", config=self.config)
         message_bucket.set_attr(
             name=msg['id'],
             data={
@@ -128,14 +128,14 @@ class armyknife():
         if not email and not nickname:
             return False
         if not email:
-            person_bucket = attribute.attributes(actorId=self.actorId, bucket="persons", config=self.config)
+            person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
             persons = person_bucket.get_bucket()
             for k,v in persons.items():
                 if v["data"]["nickname"] == nickname:
                     email = k
         if not email:
             return False
-        message_bucket = attribute.attributes(actorId=self.actorId, bucket="messages", config=self.config)
+        message_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="messages", config=self.config)
         msgs = message_bucket.get_bucket()
         ret = []
         for l,v in msgs.items():
@@ -153,12 +153,12 @@ class armyknife():
         if not email and not nickname:
             return False
         if not email:
-            person_bucket = attribute.attributes(actorId=self.actorId, bucket="persons", config=self.config)
+            person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
             persons = person_bucket.get_bucket()
             for k,v in persons.items():
                 if v["data"]["nickname"] == nickname:
                     email = k
-        message_bucket = attribute.attributes(actorId=self.actorId, bucket="messages", config=self.config)
+        message_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="messages", config=self.config)
         msgs=message_bucket.get_bucket()
         for l, v in msgs.items():
             if v["data"]["personEmail"] == email:
@@ -167,7 +167,7 @@ class armyknife():
     def addTracker(self, email, nickname, displayName=None, avatar=''):
         if not email or not nickname:
             return False
-        person_bucket = attribute.attributes(actorId=self.actorId, bucket="persons", config=self.config)
+        person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
         person = person_bucket.get_attr(email)
         if person:
             return False
@@ -183,14 +183,14 @@ class armyknife():
         return True
 
     def deleteTracker(self, email):
-        person_bucket = attribute.attributes(actorId=self.actorId, bucket="persons", config=self.config)
+        person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
         if person_bucket.delete_attr(email):
             self.clearMessages(email=email)
             return True
         return False
 
     def loadTrackers(self):
-        person_bucket = attribute.attributes(actorId=self.actorId, bucket="persons", config=self.config)
+        person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
         trackers = person_bucket.get_bucket()
         ret = []
         for p, v in trackers.items():
@@ -211,11 +211,11 @@ class armyknife():
         ts = str(time.time())
         if not comment:
             comment = ''
-        message_bucket = attribute.attributes("pinned", self.actorId, config=self.config)
+        message_bucket = attribute.Attributes("pinned", self.actor_id, config=self.config)
         message_bucket.set_attr(
             ts,
             data={
-                "actorId": self.actorId,
+                "actor_id": self.actor_id,
                 "id": id,
                 "comment": comment
             },
@@ -224,7 +224,7 @@ class armyknife():
         return True
 
     def getPinnedMessages(self):
-        message_bucket = attribute.attributes("pinned", self.actorId, config=self.config)
+        message_bucket = attribute.Attributes("pinned", self.actor_id, config=self.config)
         res = message_bucket.get_bucket()
         # Remove autoreminder messages
         msgs = {}
@@ -235,14 +235,14 @@ class armyknife():
         for m, v in msgs.iteritems():
             ret.append({
                 "id": v["data"]["id"],
-                "actorId": self.actorId,
+                "actor_id": self.actor_id,
                 "comment": v["data"]["comment"],
                 "timestamp": v["timestamp"]
             })
         return ret
 
     def deletePinnedMessages(self, comment=None):
-        message_bucket = attribute.attributes("pinned", self.actorId, config=self.config)
+        message_bucket = attribute.Attributes("pinned", self.actor_id, config=self.config)
         msgs = message_bucket.get_bucket()
         for m, v in msgs.iteritems():
             # If comment is specified, only delete that message
@@ -257,7 +257,7 @@ class armyknife():
         # Here keep auto-reminders
         now = datetime.datetime.utcnow()
         now = now.replace(tzinfo=pytz.utc)
-        message_bucket = attribute.buckets("pinned", config=self.config)
+        message_bucket = attribute.Buckets("pinned", config=self.config)
         msgs = message_bucket.fetch()
         ret = []
         if not msgs:
@@ -266,11 +266,11 @@ class armyknife():
             for a, b in v.iteritems():
                 if b["timestamp"] <= now:
                     ret.append({
-                        "actorId": m,
+                        "actor_id": m,
                         "id": b["data"]["id"],
                         "comment": b["data"]["comment"],
                         "timestamp": b["timestamp"]
                     })
-                    del_msg = attribute.attributes("pinned", m, config=self.config)
+                    del_msg = attribute.Attributes("pinned", m, config=self.config)
                     del_msg.delete_attr(a)
         return ret
