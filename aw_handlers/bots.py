@@ -1,7 +1,7 @@
 import webapp2
 from actingweb import aw_web_request
 from actingweb.handlers import bot
-import on_aw
+from armyknife import on_aw
 
 
 # noinspection PyAttributeOutsideInit
@@ -13,7 +13,7 @@ class Bots(webapp2.RequestHandler):
             params=self.request.params,
             body=self.request.body,
             headers=self.request.headers)
-        self.handler = bot.BotHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWDemo())
+        self.handler = bot.BotHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWSpark())
 
     def post(self, path):
         self.init()

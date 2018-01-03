@@ -1,6 +1,7 @@
 import webapp2
 import os
-#import pydevd
+import logging
+# import pydevd
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from aw_handlers import actor_root, actor_trust, devtests, actor_subscription, actor_callbacks, actor_resources
@@ -39,10 +40,12 @@ def set_config():
         bot_secret = os.getenv('APP_BOT_SECRET', "")
         bot_admin_room = os.getenv('APP_BOT_ADMIN_ROOM', "")
         oauth = {
-            'client_id': os.getenv('APP_OAUTH_ID',""),
-            'client_secret': os.getenv('APP_OAUTH_KEY',""),
+            'client_id': os.getenv('APP_OAUTH_ID', ""),
+            'client_secret': os.getenv('APP_OAUTH_KEY', ""),
             'redirect_uri': proto + myurl + "/oauth",
-            'scope': "spark:people_read spark:rooms_read spark:rooms_write spark:memberships_read spark:memberships_write spark:messages_write spark:messages_read spark:teams_read spark:teams_write",
+            'scope': "spark:people_read spark:rooms_read spark:rooms_write spark:memberships_read "
+                     "spark:memberships_write spark:messages_write spark:messages_read spark:teams_read "
+                     "spark:teams_write",
             'auth_uri': "https://api.ciscospark.com/v1/authorize",
             'token_uri': "https://api.ciscospark.com/v1/access_token",
             'response_type': "code",
@@ -56,7 +59,7 @@ def set_config():
                 'relationship': 'friend',
             },
             'myself': {
-                'type': type,
+                'type': aw_type,
                 'factory': proto + myurl + '/',
                 'relationship': 'friend',  # associate, friend, partner, admin
             }
@@ -105,13 +108,14 @@ def set_template_env():
 
 def main():
     from paste import httpserver
+    logging.debug('Starting up the Army Knife...')
     httpserver.serve(app, host='0.0.0.0', port='5000')
 
 
 if __name__ == '__main__':
-    #To debug in pycharm inside the Docker containter, remember to uncomment import pydevd as well
+    # To debug in pycharm inside the Docker containter, remember to uncomment import pydevd as well
     # (and add to requirements.txt)
-    #pydevd.settrace('docker.for.mac.localhost', port=3001, stdoutToServer=True, stderrToServer=True)
+    # pydevd.settrace('docker.for.mac.localhost', port=3001, stdoutToServer=True, stderrToServer=True)
 
     set_config()
     set_template_env()

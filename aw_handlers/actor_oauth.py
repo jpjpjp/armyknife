@@ -1,7 +1,7 @@
 import webapp2
 from actingweb import aw_web_request
 from actingweb.handlers import oauth
-import on_aw
+from armyknife import on_aw
 
 
 # noinspection PyAttributeOutsideInit
@@ -20,7 +20,7 @@ class ActorOauth(webapp2.RequestHandler):
             body=self.request.body,
             headers=self.request.headers,
             cookies=cookies)
-        self.handler = oauth.OauthHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWDemo())
+        self.handler = oauth.OauthHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWSpark())
 
     def get(self, actor_id, path):
         self.init()

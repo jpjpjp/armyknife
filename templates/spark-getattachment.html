@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--suppress Annotator -->
+<!--suppress Annotator, JSUnresolvedLibraryURL, JSUnfilteredForInLoop, JSUnusedGlobalSymbols, JSUnusedGlobalSymbols, JSUnusedLocalSymbols, JSUnusedLocalSymbols, JSUnusedLocalSymbols, EqualityComparisonWithCoercionJS -->
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -66,7 +66,7 @@
     }
 
 	$( document ).ready(function(){	
-        var token = getCookie('oauth_token')
+        var token = getCookie('oauth_token');
         $.ajax({
             url: "{{ url }}",
             type: "GET",
@@ -76,9 +76,9 @@
             success: function(blob) {
                 var windowUrl = window.URL || window.webkitURL;
                 var url = windowUrl.createObjectURL(blob);
-                var anchor = document.createElement("a")
+                var anchor = document.createElement("a");
                 anchor.href = url;
-                anchor.setAttribute("download", "{{ filename }}")
+                anchor.setAttribute("download", "{{ filename }}");
                 document.body.appendChild(anchor);
                 anchor.click();
                 windowUrl.revokeObjectURL(url);
