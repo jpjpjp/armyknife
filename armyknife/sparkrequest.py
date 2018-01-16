@@ -41,6 +41,10 @@ class SparkRequest:
     """
     def __init__(self, body=None, auth=None, myself=None, config=None):
         self.auth = auth
+        if not auth:
+            self.bot_request = True
+        else:
+            self.bot_request = False
         self.__signature_header = 'X-Spark-Signature'
         self.config = config
         self.__rawbody = None
@@ -76,7 +80,7 @@ class SparkRequest:
         self.__rawbody = body.decode('utf-8', 'ignore')
         try:
             self.body = json.loads(self.__rawbody)
-            logging.debug('Spark webhook: ' + self.__rawbody)
+            logging.debug('Received Spark webhook: ' + self.__rawbody)
             self.data = self.body['data']
             self.person_id = self.body['actorId']
         except (TypeError, KeyError, ValueError):
@@ -103,19 +107,23 @@ class SparkRequest:
     def re_init(self, actor_id=None, new_actor=None):
         if new_actor:
             self.me = new_actor
-            actor_id = new_actor.id
+            self.actor_id = new_actor.id
         elif not actor_id and not self.person_id:
             return False
         elif not actor_id:
             self.me = actor.Actor(config=self.config)
+            self.bot_request = True
             self.me.get_from_property(name='oauthId', value=self.person_id)
             if self.me.id:
                 logging.debug('Found Actor(' + self.me.id + ')')
             else:
                 self.me = None
                 return False
+            self.actor_id = self.me.id
+        elif actor_id:
+            self.actor_id = actor_id
+        self.bot_request = False
         self.is_actor_user = True
-        self.actor_id = actor_id
         self.link = ciscospark.CiscoSpark(auth=self.auth, actor_id=self.actor_id, config=self.config)
         self.store = armyknife.ArmyKnife(actor_id=self.actor_id, config=self.config)
         return True
@@ -150,6 +158,8 @@ class SparkRequest:
                 logging.debug('Signature does not match on firehose message' + str(sign))
                 # Do not accept this message as it may be an attacker
                 return False
+        else:
+            logging.debug("Got firehose without signature...")
 
     def enrich_data(self, what=None):
         """ Retrieve data from Spark. This operation has a cost of roundtrip to Spark platform."""
@@ -214,7 +224,10 @@ class SparkRequest:
                     # No command
                     return True
                 # @mention /cmd
-                self.cmd = self.msg_list[1]
+                if self.bot_request:
+                    self.cmd = self.msg_list[1]
+                else:
+                    self.cmd = self.msg_list[0]
         if what == 'account' and not self.chat_room_id and self.me:
             self.chat_room_id = self.me.get_property('chatRoomId').value
             self.actor_spark_id = self.me.get_property('oauthId').value

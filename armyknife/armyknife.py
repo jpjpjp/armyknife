@@ -140,13 +140,14 @@ class ArmyKnife:
         msgs = message_bucket.get_bucket()
         ret = []
         for l, v in msgs.items():
-            ret.append({
-                "timestamp": v["timestamp"],
-                "id": l,
-                "roomId": v["data"]["roomId"],
-                "personId": v["data"]["personId"],
-                "personEmail": v["data"]["personEmail"],
-            })
+            if v['data']['personEmail'] == email:
+                ret.append({
+                    "timestamp": v["timestamp"],
+                    "id": l,
+                    "roomId": v["data"]["roomId"],
+                    "personId": v["data"]["personId"],
+                    "personEmail": v["data"]["personEmail"],
+                })
         ret2 = sorted(ret, key=lambda d: d['timestamp'])
         return ret2
 
@@ -194,6 +195,8 @@ class ArmyKnife:
         person_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="persons", config=self.config)
         trackers = person_bucket.get_bucket()
         ret = []
+        if not trackers:
+            return ret
         for p, v in trackers.items():
             ret.append({
                 "email": p,
@@ -204,11 +207,11 @@ class ArmyKnife:
             )
         return ret
 
-    def save_pinned_message(self, user_id=None, comment=None, timestamp=None):
+    def save_pinned_message(self, msg_id=None, comment=None, timestamp=None):
         if not timestamp:
             return False
-        if not user_id:
-            user_id = ''
+        if not msg_id:
+            msg_id = ''
         ts = str(time.time())
         if not comment:
             comment = ''
@@ -217,7 +220,7 @@ class ArmyKnife:
             ts,
             data={
                 "actor_id": self.actor_id,
-                "id": user_id,
+                "id": msg_id,
                 "comment": comment
             },
             timestamp=timestamp

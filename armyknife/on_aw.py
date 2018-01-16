@@ -264,10 +264,17 @@ class OnAWSpark(object, on_aw.OnAWBase):
         if not spark.check_firehose_signature(self.webobj.request.headers, self.webobj.request.body):
             self.webobj.response.set_status(403, "Forbidden")
             return True
-        if spark.body['resource'] == 'memberships' and spark.body['event'] == 'created':
-            handler.memberships_created()
+        if spark.body['resource'] == 'memberships':
+            if spark.body['event'] == 'created':
+                handler.memberships_created()
+            else:
+                # memberships:deleted
+                return True
         elif spark.body['resource'] == 'messages':
             handler.message_actions()
+        # Only handle messages:created events below
+        if spark.body['resource'] != 'messages' or spark.body['event'] != 'created':
+            return True
         # Special case for /delete as we need to call self.delete_actor()
         # Make sure we have pulled down the message and spark.cmd is thus set
         if not spark.enrich_data('msg'):

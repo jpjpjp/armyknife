@@ -272,7 +272,7 @@ class CiscoSpark:
             if not ret:
                 break
             for webhook in ret['webhooks']:
-                self.unregister_webhook(spark_id=webhook['spark_id'])
+                self.unregister_webhook(spark_id=webhook['id'])
             if not ret['next']:
                 break
             ret = self.get_all_webhooks(uri=ret['next'])

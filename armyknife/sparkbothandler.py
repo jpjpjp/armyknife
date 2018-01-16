@@ -46,7 +46,7 @@ class SparkBotHandler:
                     spark_id=self.spark.room_id,
                     text="**Welcome to Spark Army Knife!**\n\n To use, please create a 1:1 room with " +
                          self.spark.config.bot['email'] +
-                         ". If already done without success, type /init in that room.",
+                         ". If you don't get an answer, type /init in that room.",
                     markdown=True)
         else:
             # The user was added
@@ -123,11 +123,11 @@ class SparkBotHandler:
             return True
         if 'filter' in cmd:
             if not filter_value:
-                out += "with attribute " + str(filter) + "**\n\n"
+                out += "with attribute " + str(msg_filter) + "**\n\n"
             elif filter_value == "None":
-                out += "without attribute " + str(filter) + "**\n\n"
+                out += "without attribute " + str(msg_filter) + "**\n\n"
             else:
-                out += "with attribute " + str(filter) + " containing " + str(filter_value) + "**\n\n"
+                out += "with attribute " + str(msg_filter) + " containing " + str(filter_value) + "**\n\n"
         if len(out) > 0:
             self.spark.link.post_admin_message(out, markdown=True)
             out = ""
@@ -142,14 +142,14 @@ class SparkBotHandler:
             if cmd == "list":
                 out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
             elif filter and ('filter' in cmd):
-                attr = a.get_property(str(filter)).value
+                attr = a.get_property(str(msg_filter)).value
                 if not attr and filter_value and filter_value == "None":
                     attr = "None"
                 if attr and (not filter_value or (filter_value and filter_value in attr)):
-                    if str(filter) in counters:
-                        counters[str(filter)] += 1
+                    if str(msg_filter) in counters:
+                        counters[str(msg_filter)] += 1
                     else:
-                        counters[str(filter)] = 1
+                        counters[str(msg_filter)] = 1
                     if cmd == "listfilter":
                         out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
                     elif cmd == "markfilter":
@@ -240,7 +240,7 @@ class SparkBotHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="**Hi there from the Spark Army Knife!**\n\n"
-                         "Please type /init to authorize the app.",
+                         "Please type /init in the 1:1 room to authorize the app.",
                     markdown=True)
         return True
 
@@ -255,7 +255,7 @@ class SparkBotHandler:
                  "all data associated "
                  "with this account.\n\n"
                  "- Use `/support <message>` to send a message to support.\n\n"
-                 "- Use `/myurl` to get the link to where your Spark Army Knife bot lives.\n\n"
+                 "- Use `/me` to get info about your Spark Army Knife account.\n\n"
                  "- Use `/recommend <email> <message>` to send a message to another user and recommend "
                  "Spark Army Knife.\n\n"
                  "- Use `/nomentionalert` to turn off 1:1 bot room alerts on mentions.\n\n"
@@ -394,10 +394,15 @@ class SparkBotHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text='No people are tracked.')
-            for tracker in trackers:
+            else:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text=tracker["email"] + ' (' + tracker["nickname"] + ')')
+                    text='**Tracked users**\n\n----\n\n',
+                    markdown=True)
+                for tracker in trackers:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.person_object,
+                        text=tracker["email"] + ' (' + tracker["nickname"] + ')')
         return True
 
     def topofmind_commands(self):
@@ -429,7 +434,7 @@ class SparkBotHandler:
                     out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                 out += "\n\n---\n\n"
                 for i, el in sorted(toplist.items()):
-                    out = out + "**" + i + "**: " + el + "\n\n"
+                    out = out + "**" + str(i) + "**: " + str(el) + "\n\n"
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text=out,
@@ -558,6 +563,20 @@ class SparkBotHandler:
             out = json.dumps(topofmind, sort_keys=True)
             self.spark.me.set_property('topofmind', out)
             self.spark.me.register_diffs(target='properties', subtarget='topofmind', blob=out)
+            # List out the updated list
+            toplist = json.loads(out)['list']
+            out = "**" + topofmind['title'] + "**"
+            modified = self.spark.me.get_property('topofmind_modified').value
+            if modified:
+                timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
+                out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
+            out += "\n\n---\n\n"
+            for i, el in sorted(toplist.items()):
+                out = out + "**" + str(i) + "**: " + str(el) + "\n\n"
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text=out,
+                markdown=True)
             return True
 
     def team_commands(self):
@@ -574,18 +593,22 @@ class SparkBotHandler:
             out = "**List of teams**\n\n----\n\n"
             properties = self.spark.me.get_properties()
             if properties and len(properties) > 0:
+                found = False
                 for name, value in properties.items():
                     if 'team-' in name:
                         try:
                             team = json.loads(value)
                         except ValueError:
                             team = value
+                        found = True
                         out += "**" + name[len('team-'):] + "**: "
                         sep = ""
                         for t in team:
                             out += sep + str(t)
                             sep = ","
                         out += "\n\n"
+                if not found:
+                    out += "No teams\n\n"
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text=out,
@@ -600,7 +623,10 @@ class SparkBotHandler:
                 markdown=True)
             return True
         if len(self.spark.msg_list) > 3:
-            emails = self.spark.msg_list[3].split(',')
+            emails = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
+                                                 len(self.spark.msg_list[1]) +
+                                                 len(self.spark.msg_list[2]) +
+                                                 2:].replace(" ", "").split(',')
         else:
             emails = []
         team_str = self.spark.me.get_property('team-' + team_name).value
@@ -627,9 +653,12 @@ class SparkBotHandler:
                 out += "Added " + e + "\n\n"
                 team_list.append(str(e))
         elif team_cmd == 'delete':
-            out += "Deleted team " + team_name + "\n\n"
+            if len(self.spark.msg_list) > 3:
+                out += "Use remove to remove an email address from a team. Delete is to delete an entire team!\n\n"
+            else:
+                out += "Deleted team " + team_name + "\n\n"
+                self.spark.me.delete_property('team-' + team_name)
             team_list = []
-            self.spark.me.delete_property('team-' + team_name)
         elif team_cmd == 'remove':
             for e in emails:
                 for e2 in team_list:
@@ -691,21 +720,27 @@ class SparkBotHandler:
             return True
         if self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
             return self.tracker_commands()
-        elif self.spark.cmd == '/myurl':
+        elif self.spark.cmd == '/myself':
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="/myself has been replaced with /me",
+                markdown=True)
+        elif self.spark.cmd == '/me':
             firehose = self.spark.me.get_property('firehoseId').value
             if not firehose:
                 firehose = "<none>"
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
+                text="**Your Spark Army Knife Account**\n\n----\n\n" +
+                     "**Registered email**: " + self.spark.me.creator + "\n\n" +
+                     "**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
                      "**Webhook**: " + firehose,
                 markdown=True)
         elif self.spark.cmd == '/delete':
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Did you also get a confirmation that all your data and account were deleted?!"
-                     " (above "
-                     "or below this message). If not, do /init, then /delete DELETENOW again.")
+                     " (above or below this message). If not, do /init, then /delete DELETENOW again.")
         elif self.spark.cmd == '/support':
             self.spark.link.post_admin_message(
                 text="From (" + self.spark.me.creator + "): " +
@@ -729,8 +764,8 @@ class SparkBotHandler:
                       len(self.spark.msg_list_wcap[1]) + 2:]
             self.spark.link.post_bot_message(
                 email=self.spark.msg_list[1],
-                text=message + "\n\n**Recommended to you by " + self.spark.person_object +
-                "**\n\nType /init to get started!",
+                text=message + "\n\n**This bot, Spark Army Knife, was recommended to you by " +
+                self.spark.person_object + "**\n\nType /init to get started!",
                 markdown=True)
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
@@ -785,4 +820,4 @@ class SparkBotHandler:
         elif len(self.spark.msg_list) == 1 and '/' not in self.spark.cmd:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="Hi there! Use /help to get help. /init to authorize the app.")
+                text="Hi there! Unknown command. Use /help to get help.")
