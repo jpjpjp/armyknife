@@ -457,12 +457,12 @@ class SparkMessageHandler:
     def messages_created(self):
         self.spark.store.process_message(self.spark.data)
         if not self.spark.enrich_data('account'):
-            return False
+            return True
         if self.spark.person_id != self.spark.actor_spark_id:
             logging.debug("Dropping message with mismatch between person_id and actor_spark_id...")
             return True
         if not self.spark.enrich_data('msg'):
-            return False
+            return True
         if not self.spark.service_status or \
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
@@ -580,7 +580,7 @@ class SparkMessageHandler:
         elif self.spark.cmd == '/listroom' and self.spark.room_id != self.spark.chat_room_id:
             self.spark.link.delete_message(self.spark.object_id)
             if not self.spark.enrich_data('room'):
-                return False
+                return True
             msg = ''
             for key in self.spark.room_data:
                 msg = msg + "**" + str(key) + "**: " + str(self.spark.room_data[key]) + "\n\n"
@@ -599,7 +599,7 @@ class SparkMessageHandler:
             feature_toggles = self.spark.me.get_property('featureToggles').value
             msgs = self.spark.link.get_messages(spark_id=self.spark.room_id, max_msgs=200)
             if not self.spark.enrich_data('room'):
-                return False
+                return True
             if 'title' in self.spark.room_data:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
@@ -865,7 +865,7 @@ class SparkMessageHandler:
                 else:
                     memberlist = memberlist + "\n\n" + m['personDisplayName'] + " (" + m['personEmail'] + ")"
             if not self.spark.enrich_data('room'):
-                return False
+                return True
             if 'title' in self.spark.room_data:
                 memberlist = "**Members in room: " + self.spark.room_data['title'] + "**\n\n----\n\n" + memberlist
             self.spark.link.post_bot_message(
@@ -934,7 +934,7 @@ class SparkMessageHandler:
                 except (KeyError, TypeError, ValueError):
                     team_list = []
             if not self.spark.enrich_data('room'):
-                return False
+                return True
             if self.spark.room_data and 'title' in self.spark.room_data:
                 title = self.spark.room_data['title']
             else:

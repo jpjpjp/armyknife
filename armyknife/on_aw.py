@@ -278,9 +278,9 @@ class OnAWSpark(object, on_aw.OnAWBase):
         # Special case for /delete as we need to call self.delete_actor()
         # Make sure we have pulled down the message and spark.cmd is thus set
         if not spark.enrich_data('msg'):
-            return False
+            return True
         if not spark.enrich_data('account'):
-            return False
+            return True
         if spark.cmd == '/delete' and spark.room_id == spark.chat_room_id:
             if len(spark.msg_list) == 2 and spark.msg_list_wcap[1] == 'DELETENOW':
                 self.delete_actor()
