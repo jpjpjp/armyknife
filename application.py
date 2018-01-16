@@ -109,7 +109,7 @@ def set_template_env():
 def main():
     from paste import httpserver
     logging.debug('Starting up the Army Knife...')
-    httpserver.serve(app, host='0.0.0.0', port='9000')
+    httpserver.serve(app, host='0.0.0.0', port='5000')
 
 
 if __name__ == '__main__':

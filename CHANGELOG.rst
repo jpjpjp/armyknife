@@ -4,7 +4,6 @@ CHANGELOG
 
 Jan 16, 2018
 ------------
-- Changed local devserver to listen to 9000 (instead of 5000)
 - Full update to support new actingweb 2.3.0 API
 - Many smaller tweaks to texts and responses to improve user experience
 - Renaming /myurl to /me and update with more info, both from Army Knife account and from Spark account
