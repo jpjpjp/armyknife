@@ -94,7 +94,7 @@ class SparkMessageHandler:
                 email=self.spark.me.creator,
                 text="Added new member " + email + " to room " + roominfo['title'])
             self.webobj.response.template_values["template_path"] = 'spark-joinedroom.html'
-        return True
+        return
 
     def global_actions(self):
         """ Do actions that are not related to a specific user """
@@ -191,7 +191,7 @@ class SparkMessageHandler:
                          "before a new /init. This will reset your account (note: all settings as well).")
                 logging.info("User (" + self.spark.me.creator + ") has invalid refresh token and got notified.")
             self.webobj.response.set_status(202, "Accepted, but not processed")
-            return True
+            return
 
     def get_autoreply_msg(self):
         if not self.spark.me.get_property('autoreplyMsg').value:
@@ -208,12 +208,12 @@ class SparkMessageHandler:
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
             reply_msg = self.get_autoreply_msg()
             if not reply_msg:
-                return False
+                return
             self.spark.enrich_data('msg')
             if not self.spark.msg_data:
-                return False
+                return
             if "armyknife@sparkbot.io" in self.spark.msg_data['text']:
-                return False
+                return
             self.spark.enrich_data('person')
             self.spark.link.post_message(
                 self.spark.room_id, reply_msg, markdown=True)
@@ -225,11 +225,10 @@ class SparkMessageHandler:
                 email=self.spark.me.creator,
                 text="**" + display_name + " (" + self.spark.person_data['personEmail'] +
                 ") sent a 1:1 message to you (auto-replied to) :**\n\n" + self.spark.msg_data['text'], markdown=True)
-            return True
 
     def message_mentions(self):
         if 'mentionedPeople' not in self.spark.data:
-            return False
+            return
         self.spark.enrich_data('account')
         for person in self.spark.data['mentionedPeople']:
             if person != self.spark.actor_spark_id:
@@ -243,9 +242,9 @@ class SparkMessageHandler:
             else:
                 reply_on = ''
             if not self.spark.enrich_data('msg'):
-                return False
+                return
             if not self.spark.enrich_data('room'):
-                return False
+                return
             if 'title' in self.spark.room_data and 'text' in self.spark.msg_data:
                 no_alert = self.spark.me.get_property('no_mentions').value
                 if not no_alert or no_alert.lower() != 'true':
@@ -259,14 +258,13 @@ class SparkMessageHandler:
                         text="**" + display_name + " (" + self.spark.person_object +
                         ") mentioned you " + reply_on + " in the room " + self.spark.room_data['title'] + ":**\n\n" +
                         self.spark.msg_data['text'], markdown=True)
-        return True
 
     def message_commands_to_me(self):
         if self.spark.person_object == self.spark.me.creator or \
                 (self.spark.room_type != 'direct' and not self.spark.mentioned) or \
                 not self.spark.enrich_data('msg') or \
                 not self.spark.enrich_data('me'):
-            return False
+            return
         user_name = self.spark.actor_data['displayName']
         if self.spark.mentioned:
             message = self.spark.msg_data['text'][len(user_name) + 1:]
@@ -312,7 +310,7 @@ class SparkMessageHandler:
                         email=subscriber_email,
                         text="Failed in looking up your Spark Army Knife account. Please type /init here"
                              " and authorize Spark Army Knife.")
-                    return True
+                    return
                 peerid = self.spark.me.id
                 logging.debug("Looking for existing peer trust:(" + str(peerid) + ")")
                 trust = subscriber.get_trust_relationship(peerid=peerid)
@@ -366,7 +364,7 @@ class SparkMessageHandler:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
                         text="Failed in looking up your Spark Army Knife account.")
-                    return True
+                    return
                 # My subscriptions
                 subs = subscriber.get_subscriptions(
                     peerid=self.spark.me.id,
@@ -407,17 +405,17 @@ class SparkMessageHandler:
     def message_actions(self):
         # Ignore all messages from sparkbots
         if "@sparkbot.io" in self.spark.person_object.lower():
-            return True
+            return
         self.validate_token()
         self.global_actions()
         self.message_autoreply()
         self.message_mentions()
         self.message_commands_to_me()
-        return True
+        return
 
     def memberships_created(self):
         if not self.spark.enrich_data('room'):
-            return False
+            return
         if self.spark.person_object == self.spark.me.creator:
             if 'title' in self.spark.room_data:
                 no_alert = self.spark.me.get_property('no_newrooms').value
@@ -457,12 +455,12 @@ class SparkMessageHandler:
     def messages_created(self):
         self.spark.store.process_message(self.spark.data)
         if not self.spark.enrich_data('account'):
-            return True
+            return
         if self.spark.person_id != self.spark.actor_spark_id:
             logging.debug("Dropping message with mismatch between person_id and actor_spark_id...")
-            return True
+            return
         if not self.spark.enrich_data('msg'):
-            return True
+            return
         if not self.spark.service_status or \
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
@@ -530,8 +528,7 @@ class SparkMessageHandler:
                              "       Use x=0 to set a reminder with no reference to a message, e.g."
                              " `/pin 0 +2h Time to leave!`",
                         markdown=True)
-                    self.webobj.response.set_status(204)
-                    return True
+                    return
                 now = datetime.datetime.utcnow()
                 if deltatype == 'm':
                     targettime = now + datetime.timedelta(minutes=delta)
@@ -580,7 +577,7 @@ class SparkMessageHandler:
         elif self.spark.cmd == '/listroom' and self.spark.room_id != self.spark.chat_room_id:
             self.spark.link.delete_message(self.spark.object_id)
             if not self.spark.enrich_data('room'):
-                return True
+                return
             msg = ''
             for key in self.spark.room_data:
                 msg = msg + "**" + str(key) + "**: " + str(self.spark.room_data[key]) + "\n\n"
@@ -599,7 +596,7 @@ class SparkMessageHandler:
             feature_toggles = self.spark.me.get_property('featureToggles').value
             msgs = self.spark.link.get_messages(spark_id=self.spark.room_id, max_msgs=200)
             if not self.spark.enrich_data('room'):
-                return True
+                return
             if 'title' in self.spark.room_data:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
@@ -725,7 +722,7 @@ class SparkMessageHandler:
                     email=self.spark.me.creator,
                     text="Usage: `/checkmember <email>` to check room memberships for the email",
                     markdown=True)
-                return True
+                return
             else:
                 target = self.spark.msg_list[1]
             self.spark.link.post_bot_message(
@@ -740,8 +737,7 @@ class SparkMessageHandler:
                     text="Usage: `/deletemember <email> <room-id>` to delete user with <email>"
                          " from a room with <room-id>.",
                     markdown=True)
-                self.webobj.response.set_status(204)
-                return True
+                return
             target = self.spark.msg_list[1]
             ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
                                               len(self.spark.msg_list[1]) +
@@ -780,8 +776,7 @@ class SparkMessageHandler:
                     email=self.spark.me.creator,
                     text="Usage: `/addmember <email> <room-id>` to add user with <email> to a room with <room-id>.",
                     markdown=True)
-                self.webobj.response.set_status(204)
-                return True
+                return
             ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
                                               len(self.spark.msg_list[1]) +
                                               2:].replace(" ", "").split(',')
@@ -804,8 +799,7 @@ class SparkMessageHandler:
                     email=self.spark.me.creator,
                     text="Usage: `/get <all|nickname>` to get messages from all or from a special nickname.",
                     markdown=True)
-                self.webobj.response.set_status(204)
-                return True
+                return
             if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'all':
                 trackers = self.spark.store.load_trackers()
                 nicknames = []
@@ -854,8 +848,7 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Net able to retrieve members in room to list members.")
-                self.webobj.response.set_status(204)
-                return True
+                return
             memberlist = ""
             sep = ""
             for m in members:
@@ -865,7 +858,7 @@ class SparkMessageHandler:
                 else:
                     memberlist = memberlist + "\n\n" + m['personDisplayName'] + " (" + m['personEmail'] + ")"
             if not self.spark.enrich_data('room'):
-                return True
+                return
             if 'title' in self.spark.room_data:
                 memberlist = "**Members in room: " + self.spark.room_data['title'] + "**\n\n----\n\n" + memberlist
             self.spark.link.post_bot_message(
@@ -921,8 +914,7 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Usage: `/team init|add|remove|verify|sync team_name`", markdown=True)
-                self.webobj.response.set_status(204)
-                return True
+                return
             team_cmd = self.spark.msg_list[1]
             team_name = self.spark.msg_list[2]
             team_str = self.spark.me.get_property('team-' + team_name).value
@@ -934,7 +926,7 @@ class SparkMessageHandler:
                 except (KeyError, TypeError, ValueError):
                     team_list = []
             if not self.spark.enrich_data('room'):
-                return True
+                return
             if self.spark.room_data and 'title' in self.spark.room_data:
                 title = self.spark.room_data['title']
             else:
@@ -949,8 +941,7 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Not able to get members of room.")
-                self.webobj.response.set_status(204)
-                return True
+                return
             out = ''
             if team_cmd == 'init':
                 team_list = []
@@ -1000,13 +991,12 @@ class SparkMessageHandler:
         elif self.spark.cmd == '/copyroom' and self.spark.room_id != self.spark.chat_room_id:
             # Only allow copyroom in group rooms
             if self.spark.room_type == 'direct':
-                return True
+                return
             if len(self.spark.msg_list) == 1:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Usage: `/copyroom New Room Title`", markdown=True)
-                self.webobj.response.set_status(204)
-                return True
+                return
             title = self.spark.msg_data['text'][len(self.spark.msg_list[0]) + 1:]
             room_data = self.spark.link.get_room(spark_id=self.spark.room_id)
             if room_data and 'teamId' in room_data:
@@ -1018,8 +1008,7 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Not able to create new room.")
-                self.webobj.response.set_status(204)
-                return True
+                return
             next_members = self.spark.link.get_memberships(spark_id=self.spark.room_id)
             members = []
             while next_members and 'items' in next_members:
@@ -1030,8 +1019,7 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Created room, but not able to add members.")
-                self.webobj.response.set_status(204)
-                return True
+                return
             for m in members:
                 self.spark.link.add_member(spark_id=room['id'], person_id=m['personId'])
             self.spark.link.post_bot_message(
@@ -1043,8 +1031,7 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Failed to create new box service.")
-                self.webobj.response.set_status(204)
-                return True
+                return
             if len(self.spark.msg_list) > 1:
                 box_root_id = self.spark.me.get_property('boxRootId').value
                 if box_root_id:
@@ -1052,8 +1039,7 @@ class SparkMessageHandler:
                         email=self.spark.me.creator,
                         text="You have created the Box root folder in Box and started to use it. "
                              "You must do /nobox before you can change root folder.")
-                    self.webobj.response.set_status(204)
-                    return True
+                    return
                 box_root = self.spark.msg_list_wcap[1]
             else:
                 box_root = self.spark.me.get_property('boxRoot').value
@@ -1074,8 +1060,7 @@ class SparkMessageHandler:
                     email=self.spark.me.creator,
                     text="You have not authorized the Box service. Go to the 1:1 bot room and do"
                          " the /box command first.")
-                self.webobj.response.set_status(204)
-                return True
+                return
             box = self.spark.me.get_peer_trustee(shorttype='boxbasic')
             proxy = aw_proxy.AwProxy(peer_target=box, config=self.spark.config)
             # box_root_id is set the first time a /boxfolder command is run
@@ -1110,8 +1095,7 @@ class SparkMessageHandler:
                         self.spark.link.post_bot_message(
                             email=self.spark.me.creator,
                             text="Unknown error trying to create Box root folder.")
-                    self.webobj.response.set_status(204)
-                    return True
+                    return
             room = self.spark.store.load_room(self.spark.room_id)
             if room and len(room["boxFolderId"]) > 0:
                 folder = proxy.get_resource('resources/folders/' + room["boxFolderId"])
@@ -1125,8 +1109,7 @@ class SparkMessageHandler:
                     self.spark.link.post_message(
                         spark_id=self.spark.room_id,
                         text="Unable to retrieve shared link from Box for this room's folder")
-                self.webobj.response.set_status(204)
-                return True
+                return
             # /boxfolder <rootfoldername>
             if len(self.spark.msg_list) > 1:
                 folder_name = self.spark.msg_list_wcap[1]

@@ -679,8 +679,8 @@ class SparkBotHandler:
             return True
         if not self.spark.enrich_data('msg'):
             return True
-        msg_data = self.spark.msg_data
-        if msg_data["roomId"] == self.spark.config.bot["admin_room"]:
+        if self.spark.room_id == self.spark.config.bot["admin_room"]:
+            logging.debug("Got a message in the admin room...")
             return self.admin_commands()
         if self.spark.room_type == 'group':
             return self.group_commands()
@@ -734,7 +734,9 @@ class SparkBotHandler:
                 text="**Your Spark Army Knife Account**\n\n----\n\n" +
                      "**Registered email**: " + self.spark.me.creator + "\n\n" +
                      "**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
-                     "**Webhook**: " + firehose,
+                     "**Webhook**: " + firehose +
+                     "If your Army Knife is fully functioning, you will also get some information about your Spark "
+                     "account.",
                 markdown=True)
         elif self.spark.cmd == '/delete':
             self.spark.link.post_bot_message(

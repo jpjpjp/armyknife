@@ -262,8 +262,7 @@ class OnAWSpark(object, on_aw.OnAWBase):
         if name == 'joinroom':
             return handler.joinroom()
         if not spark.check_firehose_signature(self.webobj.request.headers, self.webobj.request.body):
-            self.webobj.response.set_status(403, "Forbidden")
-            return True
+            return False
         if spark.body['resource'] == 'memberships':
             if spark.body['event'] == 'created':
                 handler.memberships_created()
