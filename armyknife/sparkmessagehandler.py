@@ -454,13 +454,9 @@ class SparkMessageHandler:
 
     def messages_created(self):
         self.spark.store.process_message(self.spark.data)
-        if not self.spark.enrich_data('account'):
-            return
         if self.spark.person_id != self.spark.actor_spark_id:
             # We only execute commands in messages from the Spark user attached
             # to this ArmyKnife actor.
-            return
-        if not self.spark.enrich_data('msg'):
             return
         if not self.spark.service_status or \
                 self.spark.service_status == 'invalid' or \

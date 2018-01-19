@@ -106,6 +106,7 @@ class SparkRequest:
                 self.room_type = self.data['type']  # direct or group
 
     def re_init(self, actor_id=None, new_actor=None):
+        self.bot_request = False
         if new_actor:
             self.me = new_actor
             self.actor_id = new_actor.id
@@ -123,7 +124,6 @@ class SparkRequest:
             self.actor_id = self.me.id
         elif actor_id:
             self.actor_id = actor_id
-        self.bot_request = False
         self.is_actor_user = True
         self.link = ciscospark.CiscoSpark(auth=self.auth, actor_id=self.actor_id, config=self.config)
         self.store = armyknife.ArmyKnife(actor_id=self.actor_id, config=self.config)

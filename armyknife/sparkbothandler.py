@@ -226,6 +226,8 @@ class SparkBotHandler:
                 markdown=True)
         elif self.spark.cmd == "/all-users":
             self.exec_all_users()
+        else:
+            self.spark.link.post_admin_message("Unknown command. Try /help.")
 
     def group_commands(self):
         # Respond to @armyknife /help and @armyknife singleword
@@ -681,7 +683,8 @@ class SparkBotHandler:
             return True
         if self.spark.room_id == self.spark.config.bot["admin_room"]:
             logging.debug("Got a message in the admin room...")
-            return self.admin_commands()
+            self.admin_commands()
+            return True
         if self.spark.room_type == 'group':
             return self.group_commands()
         # There shouldn't be other room types, but just in case
