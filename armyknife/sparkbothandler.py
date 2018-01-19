@@ -735,7 +735,7 @@ class SparkBotHandler:
                      "**Registered email**: " + self.spark.me.creator + "\n\n" +
                      "**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
                      "**Webhook**: " + firehose +
-                     "If your Army Knife is fully functioning, you will also get some information about your Spark "
+                     "\n\nIf your Army Knife is fully functioning, you will also get some information about your Spark "
                      "account.",
                 markdown=True)
         elif self.spark.cmd == '/delete':

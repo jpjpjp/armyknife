@@ -1194,7 +1194,3 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Deleted your box service.")
-        elif '/' in self.spark.cmd[0:1] and self.spark.room_id != self.spark.chat_room_id:
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="Unknown command. Try /help.")
