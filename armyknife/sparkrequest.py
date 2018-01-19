@@ -98,11 +98,12 @@ class SparkRequest:
             if 'roomType' in self.data:
                 self.room_type = self.data['roomType']  # direct or group
         if 'id' in self.data:
-            if self.body['resource'] == 'rooms' and self.body['event'] == 'created' and 'type' in self.data:
-                self.room_type = self.data['type']  # direct or group
+            if self.body['resource'] == 'rooms':
                 self.room_id = self.data['id']  # id of new room
             else:
-                self.object_id = self.data['id']  # Could be message or other object
+                self.object_id = self.data['id']  # Could be message, membership or other object
+            if 'type' in self.data:
+                self.room_type = self.data['type']  # direct or group
 
     def re_init(self, actor_id=None, new_actor=None):
         if new_actor:
@@ -202,8 +203,8 @@ class SparkRequest:
                 return False
             elif 'type' in self.room_data:
                 self.room_type = self.room_data['type']
-            if self.room_data:
-                logging.debug("Enriched with room data: " + str(self.room_data))
+            if self.room_data and 'id' in self.room_data:
+                logging.debug("Enriched with room data in room_id: " + str(self.room_data['id']))
         if what == 'msg' and not self.msg_data and self.object_id:
             self.msg_data = self.link.get_message(self.object_id)
             if self.me and not self.msg_data or 'text' not in self.msg_data:
@@ -213,8 +214,8 @@ class SparkRequest:
                         last_err['code']) +
                     ") - " + last_err['message'])
                 return False
-            if self.msg_data:
-                logging.debug("Enriched with message data: " + str(self.msg_data))
+            if self.msg_data and 'personEmail' in self.msg_data:
+                logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail']))
             self.msg_list = self.msg_data['text'].lower().split(" ")
             self.msg_list_wcap = self.msg_data['text'].split(" ")
             if self.room_type == 'direct':

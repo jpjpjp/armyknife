@@ -457,7 +457,8 @@ class SparkMessageHandler:
         if not self.spark.enrich_data('account'):
             return
         if self.spark.person_id != self.spark.actor_spark_id:
-            logging.debug("Dropping message with mismatch between person_id and actor_spark_id...")
+            # We only execute commands in messages from the Spark user attached
+            # to this ArmyKnife actor.
             return
         if not self.spark.enrich_data('msg'):
             return
