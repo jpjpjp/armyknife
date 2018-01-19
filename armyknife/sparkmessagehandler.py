@@ -989,6 +989,7 @@ class SparkMessageHandler:
             # Only allow copyroom in group rooms
             if self.spark.room_type == 'direct':
                 return
+            self.spark.link.delete_message(self.spark.object_id)
             if len(self.spark.msg_list) == 1:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
@@ -1021,7 +1022,7 @@ class SparkMessageHandler:
                 self.spark.link.add_member(spark_id=room['id'], person_id=m['personId'])
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
-                text="Created new room and added the same members as in this room.")
+                text="Created new room and added the same members as in that room.")
         elif self.spark.cmd == '/box' and self.spark.room_id == self.spark.chat_room_id:
             box = self.spark.me.get_peer_trustee(shorttype='boxbasic')
             if not box:
