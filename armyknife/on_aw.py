@@ -197,6 +197,7 @@ class OnAWSpark(object, on_aw.OnAWBase):
         if spark.body['resource'] == 'messages':
             if spark.body['event'] == 'created':
                 if not handler.messages_created():
+                    logging.debug('Returning 500 due to failure in messages_created processing...')
                     return 500
                 else:
                     return 204
@@ -262,6 +263,7 @@ class OnAWSpark(object, on_aw.OnAWBase):
         if name == 'joinroom':
             return handler.joinroom()
         if not spark.check_firehose_signature(self.webobj.request.headers, self.webobj.request.body):
+            logging.debug('Returning 403 forbidden...')
             return False
         if spark.body['resource'] == 'memberships':
             if spark.body['event'] == 'created':
@@ -295,10 +297,9 @@ class OnAWSpark(object, on_aw.OnAWBase):
                     email=spark.me.creator,
                     text="Usage: `/delete DELETENOW`", markdown=True)
         if spark.body['resource'] == 'messages' and spark.body['event'] == 'created':
-            if not handler.messages_created():
-                self.webobj.response.set_status(500, 'Server error')
-            else:
-                self.webobj.response.set_status(204, 'No content')
+            handler.messages_created()
+        # Successfully processed, just not acted upon
+        self.webobj.response.set_status(204, 'No content')
         return True
     
     def post_subscriptions(self, sub, peerid, data):
