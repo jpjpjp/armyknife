@@ -186,7 +186,14 @@ class CiscoSpark:
     def get_message(self, spark_id=None):
         if not spark_id:
             return False
-        return self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
+        ret = self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
+        if self.auth.oauth.last_response_code == 404:
+            refresh = self.auth.oauth.oauth_refresh_token(refresh_token=self.auth.refresh_token)
+            if not refresh:
+                logging.warn('Tried token refresh based on 404 from Spark, but failed')
+            else:
+                ret = self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
+        return ret
 
     def delete_message(self, spark_id=None):
         if not spark_id:
