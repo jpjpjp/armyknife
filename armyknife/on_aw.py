@@ -169,7 +169,7 @@ class OnAWSpark(object, on_aw.OnAWBase):
                                           myself=None,
                                           config=self.config)
         if not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
-            return 403
+            return 404
         # Try to re-init from person_id in the message
         spark.re_init()
         # Ignore messages from the bot itself
