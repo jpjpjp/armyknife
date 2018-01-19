@@ -190,17 +190,13 @@ class OnAWSpark(object, on_aw.OnAWBase):
         handler = sparkbothandler.SparkBotHandler(spark)
         if spark.body['resource'] == 'rooms':
             if spark.body['event'] == 'created':
-                return handler.rooms_created()
-        if spark.body['resource'] == 'memberships':
+                handler.rooms_created()
+        elif spark.body['resource'] == 'memberships':
             if spark.body['event'] == 'created':
-                return handler.memberships_created()
-        if spark.body['resource'] == 'messages':
+                handler.memberships_created()
+        elif spark.body['resource'] == 'messages':
             if spark.body['event'] == 'created':
-                if not handler.messages_created():
-                    logging.debug('Returning 500 due to failure in messages_created processing...')
-                    return 500
-                else:
-                    return 204
+                handler.messages_created()
         # No more event types we want to handle, just return
         return 204
 

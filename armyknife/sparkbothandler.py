@@ -37,7 +37,6 @@ class SparkBotHandler:
     def rooms_created(self):
         if not self.spark.me.id:
             pass
-        return True
 
     def memberships_created(self):
         if self.spark.is_bot_object:
@@ -52,11 +51,10 @@ class SparkBotHandler:
             # The user was added
             if self.spark.room_type == 'direct':
                 self.init_me()
-        return True
 
     def exec_all_users(self):
         if not self.spark.msg_list:
-            return True
+            return
         msg = self.spark.msg_data['text']
         users = actor.Actors(config=self.spark.config).fetch()
         if len(self.spark.msg_list) < 3 or self.spark.msg_list[2] == 'help':
@@ -73,7 +71,7 @@ class SparkBotHandler:
                 "marked-list: List all users marked\n\n"
                 "marked-clear: Clear all users marked\n\n"
                 "marked-delete: Delete all accounts marked \n\n", markdown=True)
-            return True
+            return
         cmd = self.spark.msg_list[2].lower()
         counters = {"total": 0}
         out = ""
@@ -84,7 +82,7 @@ class SparkBotHandler:
                 self.spark.link.post_admin_message(
                     "You need to supply a filter: /all-users " + str(cmd) + " `filter value(optional)`",
                     markdown=True)
-                return True
+                return
         else:
             msg_filter = None
         if msg_filter and len(self.spark.msg_list) >= 5:
@@ -120,7 +118,7 @@ class SparkBotHandler:
             self.spark.link.post_admin_message(
                 "Your /all-users command is not recognised. Please do just `/all-users` to get the help message.",
                 markdown=True)
-            return True
+            return
         if 'filter' in cmd:
             if not filter_value:
                 out += "with attribute " + str(msg_filter) + "**\n\n"
@@ -204,7 +202,6 @@ class SparkBotHandler:
             out += str(k) + ": " + str(v) + "\n\n"
         if len(out) > 0:
             self.spark.link.post_admin_message(out, markdown=True)
-        return True
 
     def admin_commands(self):
         """ Only requests in the admin room will enter this method """
@@ -244,7 +241,6 @@ class SparkBotHandler:
                     text="**Hi there from the Spark Army Knife!**\n\n"
                          "Please type /init in the 1:1 room to authorize the app.",
                     markdown=True)
-        return True
 
     def help(self):
         self.spark.link.post_bot_message(
@@ -370,7 +366,7 @@ class SparkBotHandler:
                     email=self.spark.person_object,
                     text="Usage: `/track <email> <nickname>`",
                     markdown=True)
-                return True
+                return
             # person = spark.link.get_person()
             added = self.spark.store.add_tracker(self.spark.msg_list[1], self.spark.msg_list[2])
             if added:
@@ -405,7 +401,6 @@ class SparkBotHandler:
                     self.spark.link.post_bot_message(
                         email=self.spark.person_object,
                         text=tracker["email"] + ' (' + tracker["nickname"] + ')')
-        return True
 
     def topofmind_commands(self):
         topofmind = self.spark.me.get_property('topofmind').value
@@ -427,7 +422,7 @@ class SparkBotHandler:
                     text="To set an item: `/topofmind <index> <Your top of mind item>`\n\n"
                          "Available /topofmind commands: title, clear, reminder, x delete, x insert",
                     markdown=True)
-                return True
+                return
             else:
                 out = "**" + topofmind['title'] + "**"
                 modified = self.spark.me.get_property('topofmind_modified').value
@@ -441,7 +436,7 @@ class SparkBotHandler:
                     email=self.spark.person_object,
                     text=out,
                     markdown=True)
-                return True
+                return
         # Handle more than one param
         index = self.spark.msg_list_wcap[1]
         if index == "clear":
@@ -452,7 +447,7 @@ class SparkBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Cleared your " + topofmind['title'])
-            return True
+            return
         if index == "subscriptions":
             subs = self.spark.me.get_subscriptions(target='properties', subtarget='topofmind', callback=True)
             if len(subs) > 0:
@@ -476,13 +471,13 @@ class SparkBotHandler:
                     email=self.spark.person_object,
                     text="There are no subscriptions.",
                     markdown=True)
-            return True
+            return
         if index == "title":
             if len(self.spark.msg_list_wcap) < 3:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="Use: /topofmind title <Your new list title>")
-                return True
+                return
             topofmind['title'] = self.spark.msg_data['text'][
                                  len(self.spark.msg_list_wcap[0]) +
                                  len(self.spark.msg_list_wcap[1]) + 2:]
@@ -491,13 +486,13 @@ class SparkBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Set top of mind list title to " + topofmind['title'])
-            return True
+            return
         if index == "reminder":
             if len(self.spark.msg_list_wcap) != 3:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="You must use reminder on or off! (/topofmind reminder on|off)")
-                return True
+                return
             if self.spark.msg_list_wcap[2] == "on":
                 self.spark.store.delete_pinned_messages(comment="#/TOPOFMIND")
                 now = datetime.datetime.utcnow()
@@ -511,7 +506,7 @@ class SparkBotHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="Deleted daily reminder of " + topofmind['title'])
-            return True
+            return
         if index:
             listitem = self.spark.msg_data['text'][
                        len(self.spark.msg_list_wcap[0]) +
@@ -579,7 +574,6 @@ class SparkBotHandler:
                 email=self.spark.person_object,
                 text=out,
                 markdown=True)
-            return True
 
     def team_commands(self):
         if len(self.spark.msg_list) < 3 and not (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'list'):
@@ -589,7 +583,7 @@ class SparkBotHandler:
                      " comma-separated\n\n"
                      "Use `/manageteam list` to list all teams",
                 markdown=True)
-            return True
+            return
         team_cmd = self.spark.msg_list[1]
         if len(self.spark.msg_list) == 2 and team_cmd == 'list':
             out = "**List of teams**\n\n----\n\n"
@@ -615,7 +609,7 @@ class SparkBotHandler:
                 email=self.spark.person_object,
                 text=out,
                 markdown=True)
-            return True
+            return
         team_name = self.spark.msg_list[2]
         if team_cmd != 'add' and team_cmd != 'remove' and team_cmd != 'list' and team_cmd != 'delete':
             self.spark.link.post_bot_message(
@@ -623,7 +617,7 @@ class SparkBotHandler:
                 text="Usage: `/manageteam add|remove|list|delete <teamname> <email(s)>` where emails"
                      " are comma-separated",
                 markdown=True)
-            return True
+            return
         if len(self.spark.msg_list) > 3:
             emails = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
                                                  len(self.spark.msg_list[1]) +
@@ -678,18 +672,19 @@ class SparkBotHandler:
     def messages_created(self):
         if not self.spark.room_id:
             logging.error("Got a message-created event, but roomId was not set")
-            return True
+            return
         if not self.spark.enrich_data('msg'):
-            return True
+            return
         if self.spark.room_id == self.spark.config.bot["admin_room"]:
             logging.debug("Got a message in the admin room...")
             self.admin_commands()
-            return True
+            return
         if self.spark.room_type == 'group':
-            return self.group_commands()
+            self.group_commands()
+            return
         # There shouldn't be other room types, but just in case
         if self.spark.room_type != 'direct':
-            return True
+            return
         if not self.spark.me or not self.spark.me.id:
             migrate = None
             # migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + person_object,
@@ -712,17 +707,20 @@ class SparkBotHandler:
                 self.spark.re_init(new_actor=myself)
                 logging.debug("Successfully migrated " + self.spark.person_object)
         if self.spark.cmd == '/init':
-            return self.init_me()
+            self.init_me()
+            return
         elif self.spark.cmd == '/help':
-            return self.help()
+            self.help()
+            return
         if not self.spark.me or not self.spark.me.id:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Not able to find you as a user. Please do /init",
                 markdown=True)
-            return True
+            return
         if self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
-            return self.tracker_commands()
+            self.tracker_commands()
+            return
         elif self.spark.cmd == '/myself':
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
@@ -754,16 +752,18 @@ class SparkBotHandler:
                 email=self.spark.person_object,
                 text="Your message has been sent to support.")
         elif self.spark.cmd == '/manageteam':
-            return self.team_commands()
+            self.team_commands()
+            return
         elif self.spark.cmd == '/topofmind' or self.spark.cmd == '/tom':
-            return self.topofmind_commands()
+            self.topofmind_commands()
+            return
         elif self.spark.cmd == '/recommend':
             if len(self.spark.msg_list_wcap) < 3:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="Usage `/recommend <send_to_email> <your message to the person>,\n\n"
                          "e.g. `/recommend john@gmail.com Hey! Check out this cool app!`")
-                return True
+                return
             message = self.spark.msg_data['text'][
                       len(self.spark.msg_list_wcap[0]) +
                       len(self.spark.msg_list_wcap[1]) + 2:]
