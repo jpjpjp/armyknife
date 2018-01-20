@@ -229,7 +229,10 @@ class SparkRequest:
                     self.cmd = self.msg_list[1]
                 else:
                     self.cmd = self.msg_list[0]
-            logging.debug('Received command from ' + self.me.creator + ': ' + self.cmd)
+            if self.me and self.me.creator and '/' in self.cmd:
+                logging.debug('Received command from ' + self.me.creator + ': ' + self.cmd)
+            elif '/' in self.cmd:
+                logging.debug('Received command from unknown user: ' + self.cmd)
         if what == 'account' and not self.chat_room_id and self.me:
             self.chat_room_id = self.me.get_property('chatRoomId').value
             self.actor_spark_id = self.me.get_property('oauthId').value
