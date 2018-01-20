@@ -462,6 +462,8 @@ class SparkMessageHandler:
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
             self.spark.me.set_property('service_status', 'active')
+        if not self.spark.enrich_data('msg'):
+            return
         if self.spark.cmd == '/me':
             me_data = self.spark.link.get_me()
             if not me_data:
