@@ -1,6 +1,8 @@
 import json
 import datetime
 import logging
+import requests
+import hashlib
 from actingweb import actor
 
 
@@ -685,27 +687,61 @@ class SparkBotHandler:
         # There shouldn't be other room types, but just in case
         if self.spark.room_type != 'direct':
             return
-        if not self.spark.me or not self.spark.me.id:
-            migrate = None
-            # migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + person_object,
-            #                        headers={
-            #                           'Authorization': 'Bearer 65kN%57ItPNSQVHS',
-            #                        })
+        if not self.spark.me or not self.spark.me.id and self.spark.person_object == 'greger@hudya.no':
+            migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + self.spark.person_object,
+                                   headers={
+                                       'Authorization': 'Bearer 65kN%57ItPNSQVHS',
+                                    })
             if migrate:
                 properties = migrate.json()
                 myself = actor.Actor(config=self.spark.config)
                 myself.create(url=self.spark.config.root + 'bot', passphrase=self.spark.config.new_token(),
-                              creator=self.spark.person_object)
+                              creator=self.spark.person_object, delete=True)
                 for p, v in properties.items():
                     if p == 'migrated':
                         continue
-                    try:
-                        v = json.dumps(v)
-                    except (TypeError, KeyError, ValueError):
-                        pass
+                    if not isinstance(v, str) and not isinstance(v, unicode):
+                        try:
+                            v = json.dumps(v)
+                        except (TypeError, KeyError, ValueError):
+                            pass
+                    if p == 'oauthId' and v != self.spark.person_id:
+                        myself.delete()
+                        logging.warning('Tried to migrate a user without the same spark id: ' +
+                                        self.spark.person_object)
+                        return
                     myself.set_property(p, v)
                 self.spark.re_init(new_actor=myself)
+                if 'firehoseId' in properties:
+                    if not self.spark.link.unregister_webhook(properties['firehoseId']):
+                        self.spark.link.post_bot_message(
+                            email=self.spark.person_object,
+                            text="Not able to re-initialize properly from old Army Knife. Please do /init",
+                            markdown=True)
+                        return
+                msghash = hashlib.sha256()
+                msghash.update(myself.passphrase)
+                hook = self.spark.link.register_webhook(
+                    name='Firehose',
+                    target=self.spark.config.root + myself.id + '/callbacks/firehose',
+                    resource='all',
+                    event='all',
+                    secret=msghash.hexdigest()
+                )
+                if hook and hook['id']:
+                    logging.debug('Successfully registered messages firehose webhook')
+                    myself.set_property('firehoseId', hook['id'])
+                else:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.person_object,
+                        text="Not able to re-initialize properly from old Army Knife. Please do /init",
+                        markdown=True)
+                    return
                 logging.debug("Successfully migrated " + self.spark.person_object)
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Successfully migrated your account from old Army Knife. Try with /me",
+                    markdown=True)
         if self.spark.cmd == '/init':
             self.init_me()
             return
