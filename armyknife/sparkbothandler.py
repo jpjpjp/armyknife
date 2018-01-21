@@ -433,7 +433,7 @@ class SparkBotHandler:
                     out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                 out += "\n\n---\n\n"
                 for i, el in sorted(toplist.items()):
-                    out = out + "**" + str(i) + "**: " + str(el) + "\n\n"
+                    out = out + "**" + i + "**: " + el + "\n\n"
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text=out,
