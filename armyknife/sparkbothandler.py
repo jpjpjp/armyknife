@@ -250,7 +250,7 @@ class SparkBotHandler:
             text="**Spark Army Knife (author: Greger Wedel)**\n\n"
                  "Help message for commands that only work in the bot 1:1 room.\n\n"
                  "**App Management**\n\n"
-                 "- Use `/init` to authorize the app.\n\n"
+                 "- Use `/init` to authorize the app so that all commands work.\n\n"
                  "- Use `/delete DELETENOW` to delete your Spark Army Knife account, this room, and "
                  "all data associated "
                  "with this account.\n\n"
@@ -773,7 +773,7 @@ class SparkBotHandler:
                      "**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
                      "**Webhook**: " + firehose +
                      "\n\nIf your Army Knife is fully functioning, you will also get some information about your Spark "
-                     "account.",
+                     "account. If not, please do /init.",
                 markdown=True)
         elif self.spark.cmd == '/delete':
             self.spark.link.post_bot_message(

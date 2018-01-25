@@ -452,16 +452,7 @@ class SparkMessageHandler:
                 logging.debug('Added/removed collaborator(' + self.spark.person_object +
                               ') to Box folder(' + room["boxFolderId"] + ')')
 
-    def messages_created(self):
-        self.spark.store.process_message(self.spark.data)
-        if self.spark.person_id != self.spark.actor_spark_id:
-            # We only execute commands in messages from the Spark user attached
-            # to this ArmyKnife actor.
-            return
-        if not self.spark.service_status or \
-                self.spark.service_status == 'invalid' or \
-                self.spark.service_status == 'firehose':
-            self.spark.me.set_property('service_status', 'active')
+    def bot_room_commands(self):
         if self.spark.cmd == '/me':
             me_data = self.spark.link.get_me()
             if not me_data:
@@ -477,7 +468,293 @@ class SparkMessageHandler:
                          "**Spark id**: " + me_data['id'] + "\n\n"
                          "**Spark avatar**: " + (me_data['avatar'] or '') + "\n\n",
                     markdown=True)
-        elif self.spark.cmd == '/pin' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/listwebhooks':
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="**All Registered Webhooks on Your Account**\n\n- - -",
+                markdown=True)
+            ret = self.spark.link.get_all_webhooks()
+            while 1:
+                if not ret:
+                    break
+                for h in ret['webhooks']:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="**Name(id)**: " + h['name'] + " (" + h['id'] + ")"
+                             "\n\n**Events**: " + h['resource'] + ":" +
+                             h['event'] +
+                             "\n\n**Target**: " + h['targetUrl'] +
+                             "\n\n**Created**: " + h['created'] +
+                             "\n\n- - -\n\n",
+                        markdown=True
+                    )
+                if not ret['next']:
+                    break
+                ret = self.spark.link.get_all_webhooks(uri=ret['next'])
+        elif self.spark.cmd == '/deletewebhook':
+            if len(self.spark.msg_list) != 2:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage `/deletewebook <webhookid>`.\n\nUse /listwebhooks to get the id."
+                )
+            else:
+                hook_id = self.spark.msg_list_wcap[1]
+                ret = self.spark.link.unregister_webhook(spark_id=hook_id)
+                if ret is not None:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Deleted webhook: " + hook_id
+                    )
+                else:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Was not able to delete webhook: " + hook_id
+                    )
+        elif self.spark.cmd == '/cleanwebhooks':
+            self.spark.me.delete_property('firehoseId')
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="Started cleaning up ALL webhooks...")
+            self.spark.link.clean_all_webhooks(spark_id=self.spark.room_id)
+            msghash = hashlib.sha256()
+            msghash.update(self.spark.me.passphrase)
+            hook = self.spark.link.register_webhook(
+                name='Firehose',
+                target=self.spark.config.root + self.spark.me.id + '/callbacks/firehose',
+                resource='all',
+                event='all',
+                secret=msghash.hexdigest()
+                )
+            if hook and hook['id']:
+                logging.debug('Successfully registered messages firehose webhook')
+                self.spark.me.set_property('firehoseId', hook['id'])
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Successfully created new Army Knife webhook.")
+        elif self.spark.cmd == '/countrooms':
+            out = "**Counting rooms...**\n\n----\n\n"
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text=out,
+                markdown=True)
+            out = ""
+            next_rooms = self.spark.link.get_rooms()
+            rooms = []
+            while next_rooms and 'items' in next_rooms:
+                rooms.extend(next_rooms['items'])
+                next_rooms = self.spark.link.get_rooms(get_next=True)
+            if len(rooms) > 0:
+                out += "**You are member of " + str(len(rooms)) + " group rooms.**\n\n"
+            else:
+                out += "**No rooms found.**"
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text=out,
+                markdown=True)
+        elif self.spark.cmd == '/checkmember':
+            if len(self.spark.msg_list) == 1:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: `/checkmember <email>` to check room memberships for the email",
+                    markdown=True)
+                return
+            else:
+                target = self.spark.msg_list[1]
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="**Room memberships for " + target + "**\n\n----\n\n",
+                markdown=True)
+            self.check_member(target)
+        elif self.spark.cmd == '/deletemember':
+            if len(self.spark.msg_list) < 3:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: `/deletemember <email> <room-id>` to delete user with <email>"
+                         " from a room with <room-id>.",
+                    markdown=True)
+                return
+            target = self.spark.msg_list[1]
+            ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
+                                              len(self.spark.msg_list[1]) +
+                                              2:].replace(" ", "").split(',')
+            for i in ids:
+                next_members = self.spark.link.get_memberships(spark_id=str(i))
+                members = []
+                while next_members and 'items' in next_members:
+                    members.extend(next_members['items'])
+                    next_members = self.spark.link.get_memberships(get_next=True)
+                found = False
+                for m in members:
+                    found = False
+                    if m['personEmail'].lower() == target:
+                        found = True
+                        res = self.spark.link.delete_member(spark_id=m['id'])
+                        if res is not None:
+                            self.spark.link.post_bot_message(
+                                email=self.spark.me.creator,
+                                text="Deleted " + target + " from the room " + i,
+                                markdown=True)
+                        else:
+                            self.spark.link.post_bot_message(
+                                email=self.spark.me.creator,
+                                text="Delete failed from the room " + i,
+                                markdown=True)
+                        break
+                if not found:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text=target + " was not found in room " + i,
+                        markdown=True)
+        elif self.spark.cmd == '/addmember':
+            if len(self.spark.msg_list) < 3:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: `/addmember <email> <room-id>` to add user with <email> to a room with <room-id>.",
+                    markdown=True)
+                return
+            ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
+                                              len(self.spark.msg_list[1]) +
+                                              2:].replace(" ", "").split(',')
+            logging.debug(str(self.spark.msg_list_wcap))
+            for i in ids:
+                res = self.spark.link.add_member(spark_id=i, email=self.spark.msg_list[1])
+                if res:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Added " + self.spark.msg_list[1] + " to the room " + i,
+                        markdown=True)
+                else:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Failed adding " + self.spark.msg_list[1] + " to room " + i,
+                        markdown=True)
+        elif self.spark.cmd == '/get':
+            if len(self.spark.msg_list) == 1:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: `/get <all|nickname>` to get messages from all or from a special nickname.",
+                    markdown=True)
+                return
+            if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'all':
+                trackers = self.spark.store.load_trackers()
+                nicknames = []
+                for tracker in trackers:
+                    nicknames.append(tracker["nickname"])
+            else:
+                nicknames = [self.spark.msg_list[1]]
+            for nick in nicknames:
+                msgs = self.spark.store.load_messages(nickname=nick)
+                if not msgs:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text='**No messages from ' +
+                             nick + '**', markdown=True)
+                else:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text='-------- -------- --------- --------- ---------')
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text='**Messages from: ' +
+                             nick + '**', markdown=True)
+                    for msg in msgs:
+                        msg_content = self.spark.link.get_message(msg["id"])
+                        if not msg_content:
+                            continue
+                        text = msg_content['text']
+                        room = self.spark.link.get_room(msg["roomId"])
+                        self.spark.link.post_bot_message(
+                            email=self.spark.me.creator,
+                            text=msg["timestamp"].strftime('%c') + ' - (' + room['title'] + ')' + '\r\n' + text)
+                    self.spark.store.clear_messages(nickname=nick)
+        elif self.spark.cmd == '/pins':
+            msgs = self.spark.store.get_pinned_messages()
+            if msgs:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="**Your Pinned Reminders (all times are in UTC)**\n\n----\n\n",
+                    markdown=True)
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="**You have no Pinned Reminders**",
+                    markdown=True)
+            for m in msgs:
+                if len(m["id"]) == 0:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="**" + m["timestamp"].strftime('%Y-%m-%d %H:%M') + "** -- " + m[
+                            "comment"] + "\n\n----\n\n",
+                        markdown=True)
+                    continue
+                pin = self.spark.link.get_message(spark_id=m["id"])
+                if not pin:
+                    logging.warn('Not able to retrieve message data for pinned message ')
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Not possible to retrieve pinned message details."
+                    )
+                    continue
+                person = self.spark.link.get_person(spark_id=pin['personId'])
+                room = self.spark.link.get_room(spark_id=pin['roomId'])
+                if not person or not room:
+                    logging.warn('Not able to retrieve person and room data for pinned message')
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Not possible to retrieve pinned message person and room details."
+                    )
+                    continue
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="**" + m["timestamp"].strftime('%Y-%m-%d %H:%M') + "** -- " + m["comment"] + "\n\nFrom " +
+                         person['displayName'] + " (" + person['emails'][0] + ")" + " in room (" + room[
+                             'title'] + ")\n\n" +
+                         pin['text'] + "\n\n----\n\n",
+                    markdown=True)
+        elif self.spark.cmd == '/box':
+            box = self.spark.me.get_peer_trustee(shorttype='boxbasic')
+            if not box:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Failed to create new box service.")
+                return
+            if len(self.spark.msg_list) > 1:
+                box_root_id = self.spark.me.get_property('boxRootId').value
+                if box_root_id:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="You have created the Box root folder in Box and started to use it. "
+                             "You must do /nobox before you can change root folder.")
+                    return
+                box_root = self.spark.msg_list_wcap[1]
+            else:
+                box_root = self.spark.me.get_property('boxRoot').value
+                if not box_root:
+                    box_root = 'SparkRoomFolders'
+            self.spark.me.set_property('boxRoot', box_root)
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="Your box service is available and can be authorized at " + box['baseuri'] +
+                     "/www\n\n" +
+                     "Then use /boxfolder in group rooms to create new Box folders (created below the " +
+                     box_root + " folder).")
+        elif self.spark.cmd == '/nobox':
+            if not self.spark.me.delete_peer_trustee(shorttype='boxbasic'):
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Failed to delete box service.")
+            else:
+                self.spark.me.delete_property('boxRoot')
+                self.spark.me.delete_property('boxRootId')
+                box_rooms = self.spark.store.load_rooms()
+                for b in box_rooms:
+                    self.spark.store.delete_from_room(b.id, boxfolder=True)
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Deleted your box service.")
+
+    def all_rooms_commands(self):
+        if self.spark.cmd == '/pin':
             self.spark.link.delete_message(self.spark.data['id'])
             if len(self.spark.msg_list) >= 2:
                 try:
@@ -552,7 +829,7 @@ class SparkMessageHandler:
                     text="**Pinned (" + msgs[nr]['created'] + ") from " +
                          msgs[nr]['personEmail'] + ":** " + msgs[nr]['text'],
                     markdown=True)
-        elif self.spark.cmd == '/makepublic' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/makepublic':
             uuid = self.spark.store.add_uuid_to_room(self.spark.room_id)
             if not uuid:
                 self.spark.link.post_message(
@@ -562,7 +839,7 @@ class SparkMessageHandler:
                 self.spark.link.post_message(
                     spark_id=self.spark.room_id, text="Public URI: " + self.spark.config.root +
                     self.spark.me.id + '/callbacks/joinroom?id=' + uuid)
-        elif self.spark.cmd == '/makeprivate' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/makeprivate':
             if not self.spark.store.delete_from_room(self.spark.room_id, uuid=True):
                 self.spark.link.post_message(
                     id=self.spark.room_id,
@@ -571,7 +848,7 @@ class SparkMessageHandler:
                 self.spark.link.post_message(
                     id=self.spark.room_id,
                     text="Made room private and add URL will not work anymore.")
-        elif self.spark.cmd == '/listroom' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/listroom':
             self.spark.link.delete_message(self.spark.object_id)
             if not self.spark.enrich_data('room'):
                 return
@@ -588,7 +865,7 @@ class SparkMessageHandler:
                     text="**Room Details**\n\n" + msg +
                          "\n\nUse `/listmembers` and `/listfiles` to get other room details.",
                     markdown=True)
-        elif self.spark.cmd == '/listfiles' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/listfiles':
             self.spark.link.delete_message(self.spark.data['id'])
             feature_toggles = self.spark.me.get_property('featureToggles').value
             msgs = self.spark.link.get_messages(spark_id=self.spark.room_id, max_msgs=200)
@@ -630,206 +907,7 @@ class SparkMessageHandler:
                                     markdown=True)
                 # Using max=0 gives us the next batch
                 msgs = self.spark.link.get_messages(spark_id=self.spark.room_id, max_msgs=0)
-        elif self.spark.cmd == '/listwebhooks' and self.spark.room_id == self.spark.chat_room_id:
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="**All Registered Webhooks on Your Account**\n\n- - -",
-                markdown=True)
-            ret = self.spark.link.get_all_webhooks()
-            while 1:
-                if not ret:
-                    break
-                for h in ret['webhooks']:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="**Name(id)**: " + h['name'] + " (" + h['id'] + ")"
-                             "\n\n**Events**: " + h['resource'] + ":" +
-                             h['event'] +
-                             "\n\n**Target**: " + h['targetUrl'] +
-                             "\n\n**Created**: " + h['created'] +
-                             "\n\n- - -\n\n",
-                        markdown=True
-                    )
-                if not ret['next']:
-                    break
-                ret = self.spark.link.get_all_webhooks(uri=ret['next'])
-        elif self.spark.cmd == '/deletewebhook' and self.spark.room_id == self.spark.chat_room_id:
-            if len(self.spark.msg_list) != 2:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Usage `/deletewebook <webhookid>`.\n\nUse /listwebhooks to get the id."
-                )
-            else:
-                hook_id = self.spark.msg_list_wcap[1]
-                ret = self.spark.link.unregister_webhook(spark_id=hook_id)
-                if ret is not None:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="Deleted webhook: " + hook_id
-                    )
-                else:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="Was not able to delete webhook: " + hook_id
-                    )
-        elif self.spark.cmd == '/cleanwebhooks' and self.spark.room_id == self.spark.chat_room_id:
-            self.spark.me.delete_property('firehoseId')
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="Started cleaning up ALL webhooks...")
-            self.spark.link.clean_all_webhooks(spark_id=self.spark.room_id)
-            msghash = hashlib.sha256()
-            msghash.update(self.spark.me.passphrase)
-            hook = self.spark.link.register_webhook(
-                name='Firehose',
-                target=self.spark.config.root + self.spark.me.id + '/callbacks/firehose',
-                resource='all',
-                event='all',
-                secret=msghash.hexdigest()
-                )
-            if hook and hook['id']:
-                logging.debug('Successfully registered messages firehose webhook')
-                self.spark.me.set_property('firehoseId', hook['id'])
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Successfully created new Army Knife webhook.")
-        elif self.spark.cmd == '/countrooms' and self.spark.room_id == self.spark.chat_room_id:
-            out = "**Counting rooms...**\n\n----\n\n"
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text=out,
-                markdown=True)
-            out = ""
-            next_rooms = self.spark.link.get_rooms()
-            rooms = []
-            while next_rooms and 'items' in next_rooms:
-                rooms.extend(next_rooms['items'])
-                next_rooms = self.spark.link.get_rooms(get_next=True)
-            if len(rooms) > 0:
-                out += "**You are member of " + str(len(rooms)) + " group rooms.**\n\n"
-            else:
-                out += "**No rooms found.**"
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text=out,
-                markdown=True)
-        elif self.spark.cmd == '/checkmember' and self.spark.room_id == self.spark.chat_room_id:
-            if len(self.spark.msg_list) == 1:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Usage: `/checkmember <email>` to check room memberships for the email",
-                    markdown=True)
-                return
-            else:
-                target = self.spark.msg_list[1]
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="**Room memberships for " + target + "**\n\n----\n\n",
-                markdown=True)
-            self.check_member(target)
-        elif self.spark.cmd == '/deletemember' and self.spark.room_id == self.spark.chat_room_id:
-            if len(self.spark.msg_list) < 3:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Usage: `/deletemember <email> <room-id>` to delete user with <email>"
-                         " from a room with <room-id>.",
-                    markdown=True)
-                return
-            target = self.spark.msg_list[1]
-            ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
-                                              len(self.spark.msg_list[1]) +
-                                              2:].replace(" ", "").split(',')
-            for i in ids:
-                next_members = self.spark.link.get_memberships(spark_id=str(i))
-                members = []
-                while next_members and 'items' in next_members:
-                    members.extend(next_members['items'])
-                    next_members = self.spark.link.get_memberships(get_next=True)
-                found = False
-                for m in members:
-                    found = False
-                    if m['personEmail'].lower() == target:
-                        found = True
-                        res = self.spark.link.delete_member(spark_id=m['id'])
-                        if res is not None:
-                            self.spark.link.post_bot_message(
-                                email=self.spark.me.creator,
-                                text="Deleted " + target + " from the room " + i,
-                                markdown=True)
-                        else:
-                            self.spark.link.post_bot_message(
-                                email=self.spark.me.creator,
-                                text="Delete failed from the room " + i,
-                                markdown=True)
-                        break
-                if not found:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text=target + " was not found in room " + i,
-                        markdown=True)
-        elif self.spark.cmd == '/addmember' and self.spark.room_id == self.spark.chat_room_id:
-            if len(self.spark.msg_list) < 3:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Usage: `/addmember <email> <room-id>` to add user with <email> to a room with <room-id>.",
-                    markdown=True)
-                return
-            ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
-                                              len(self.spark.msg_list[1]) +
-                                              2:].replace(" ", "").split(',')
-            logging.debug(str(self.spark.msg_list_wcap))
-            for i in ids:
-                res = self.spark.link.add_member(spark_id=i, email=self.spark.msg_list[1])
-                if res:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="Added " + self.spark.msg_list[1] + " to the room " + i,
-                        markdown=True)
-                else:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="Failed adding " + self.spark.msg_list[1] + " to room " + i,
-                        markdown=True)
-        elif self.spark.cmd == '/get' and self.spark.room_id == self.spark.chat_room_id:
-            if len(self.spark.msg_list) == 1:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Usage: `/get <all|nickname>` to get messages from all or from a special nickname.",
-                    markdown=True)
-                return
-            if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'all':
-                trackers = self.spark.store.load_trackers()
-                nicknames = []
-                for tracker in trackers:
-                    nicknames.append(tracker["nickname"])
-            else:
-                nicknames = [self.spark.msg_list[1]]
-            for nick in nicknames:
-                msgs = self.spark.store.load_messages(nickname=nick)
-                if not msgs:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text='**No messages from ' +
-                             nick + '**', markdown=True)
-                else:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text='-------- -------- --------- --------- ---------')
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text='**Messages from: ' +
-                             nick + '**', markdown=True)
-                    for msg in msgs:
-                        msg_content = self.spark.link.get_message(msg["id"])
-                        if not msg_content:
-                            continue
-                        text = msg_content['text']
-                        room = self.spark.link.get_room(msg["roomId"])
-                        self.spark.link.post_bot_message(
-                            email=self.spark.me.creator,
-                            text=msg["timestamp"].strftime('%c') + ' - (' + room['title'] + ')' + '\r\n' + text)
-                    self.spark.store.clear_messages(nickname=nick)
-        elif self.spark.cmd == '/listmembers' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/listmembers':
             self.spark.link.delete_message(self.spark.data['id'])
             if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'csv':
                 csv = True
@@ -861,51 +939,7 @@ class SparkMessageHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text=memberlist, markdown=True)
-        elif self.spark.cmd == '/pins' and self.spark.room_id == self.spark.chat_room_id:
-            msgs = self.spark.store.get_pinned_messages()
-            if msgs:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="**Your Pinned Reminders (all times are in UTC)**\n\n----\n\n",
-                    markdown=True)
-            else:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="**You have no Pinned Reminders**",
-                    markdown=True)
-            for m in msgs:
-                if len(m["id"]) == 0:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="**" + m["timestamp"].strftime('%Y-%m-%d %H:%M') + "** -- " + m[
-                            "comment"] + "\n\n----\n\n",
-                        markdown=True)
-                    continue
-                pin = self.spark.link.get_message(spark_id=m["id"])
-                if not pin:
-                    logging.warn('Not able to retrieve message data for pinned message ')
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="Not possible to retrieve pinned message details."
-                    )
-                    continue
-                person = self.spark.link.get_person(spark_id=pin['personId'])
-                room = self.spark.link.get_room(spark_id=pin['roomId'])
-                if not person or not room:
-                    logging.warn('Not able to retrieve person and room data for pinned message')
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="Not possible to retrieve pinned message person and room details."
-                    )
-                    continue
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="**" + m["timestamp"].strftime('%Y-%m-%d %H:%M') + "** -- " + m["comment"] + "\n\nFrom " +
-                         person['displayName'] + " (" + person['emails'][0] + ")" + " in room (" + room[
-                             'title'] + ")\n\n" +
-                         pin['text'] + "\n\n----\n\n",
-                    markdown=True)
-        elif self.spark.cmd == '/team' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/team':
             self.spark.link.delete_message(self.spark.object_id)
             if len(self.spark.msg_list) != 3:
                 self.spark.link.post_bot_message(
@@ -985,7 +1019,7 @@ class SparkMessageHandler:
                 email=self.spark.me.creator,
                 text=out,
                 markdown=True)
-        elif self.spark.cmd == '/copyroom' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/copyroom':
             # Only allow copyroom in group rooms
             if self.spark.room_type == 'direct':
                 return
@@ -1023,34 +1057,7 @@ class SparkMessageHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text="Created new room and added the same members as in that room.")
-        elif self.spark.cmd == '/box' and self.spark.room_id == self.spark.chat_room_id:
-            box = self.spark.me.get_peer_trustee(shorttype='boxbasic')
-            if not box:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Failed to create new box service.")
-                return
-            if len(self.spark.msg_list) > 1:
-                box_root_id = self.spark.me.get_property('boxRootId').value
-                if box_root_id:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="You have created the Box root folder in Box and started to use it. "
-                             "You must do /nobox before you can change root folder.")
-                    return
-                box_root = self.spark.msg_list_wcap[1]
-            else:
-                box_root = self.spark.me.get_property('boxRoot').value
-                if not box_root:
-                    box_root = 'SparkRoomFolders'
-            self.spark.me.set_property('boxRoot', box_root)
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="Your box service is available and can be authorized at " + box['baseuri'] +
-                     "/www\n\n" +
-                     "Then use /boxfolder in group rooms to create new Box folders (created below the " +
-                     box_root + " folder).")
-        elif self.spark.cmd == '/boxfolder' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/boxfolder':
             # box_root is set when issueing the /box command
             box_root = self.spark.me.get_property('boxRoot').value
             if not box_root or len(box_root) == 0:
@@ -1159,7 +1166,7 @@ class SparkMessageHandler:
                     self.spark.link.post_message(
                         spark_id=self.spark.room_id,
                         text='Failed to create new folder for unknown reason.')
-        elif self.spark.cmd == '/noboxfolder' and self.spark.room_id != self.spark.chat_room_id:
+        elif self.spark.cmd == '/noboxfolder':
             room = self.spark.store.load_room(self.spark.room_id)
             if not room:
                 self.spark.link.post_message(
@@ -1178,17 +1185,21 @@ class SparkMessageHandler:
                     self.spark.link.post_message(
                         spark_id=self.spark.room_id,
                         text="Disconnected the Box folder from this room. The Box folder was not deleted.")
-        elif self.spark.cmd == '/nobox' and self.spark.room_id == self.spark.chat_room_id:
-            if not self.spark.me.delete_peer_trustee(shorttype='boxbasic'):
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Failed to delete box service.")
-            else:
-                self.spark.me.delete_property('boxRoot')
-                self.spark.me.delete_property('boxRootId')
-                box_rooms = self.spark.store.load_rooms()
-                for b in box_rooms:
-                    self.spark.store.delete_from_room(b.id, boxfolder=True)
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Deleted your box service.")
+
+    def messages_created(self):
+        self.spark.store.process_message(self.spark.data)
+        if self.spark.person_id != self.spark.actor_spark_id:
+            # We only execute commands in messages from the Spark user attached
+            # to this ArmyKnife actor.
+            return
+        if not self.spark.service_status or \
+                self.spark.service_status == 'invalid' or \
+                self.spark.service_status == 'firehose':
+            self.spark.me.set_property('service_status', 'active')
+        if self.spark.room_id == self.spark.chat_room_id:
+            # Commands run in the 1:1 bot room that need OAuth rights on behalf
+            # of the user to execute
+            self.bot_room_commands()
+        if self.spark.room_id != self.spark.chat_room_id:
+            self.all_rooms_commands()
+        return
