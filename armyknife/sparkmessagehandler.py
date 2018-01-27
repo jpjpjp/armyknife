@@ -1187,10 +1187,14 @@ class SparkMessageHandler:
                         text="Disconnected the Box folder from this room. The Box folder was not deleted.")
 
     def messages_created(self):
+        app_disabled = self.spark.me.get_property('app_disabled').value
+        if app_disabled and app_disabled.lower() == 'true':
+            logging.debug("Account is disabled: " + self.spark.me.creator)
+            return
         self.spark.store.process_message(self.spark.data)
         if self.spark.person_id != self.spark.actor_spark_id:
             # We only execute commands in messages from the Spark user attached
-            # to this ArmyKnife actor.
+            # to this ArmyKnife actor (not to).
             return
         if not self.spark.service_status or \
                 self.spark.service_status == 'invalid' or \

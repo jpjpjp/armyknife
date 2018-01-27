@@ -88,7 +88,7 @@ class SparkBotHandler:
         else:
             msg_filter = None
         if msg_filter and len(self.spark.msg_list) >= 5:
-            filter_value = self.spark.msg_list[4]
+            filter_value = self.spark.msg_list_wcap[4]
         else:
             filter_value = None
         if cmd == "marked-message" and len(self.spark.msg_list) >= 4:
@@ -252,8 +252,9 @@ class SparkBotHandler:
                  "**App Management**\n\n"
                  "- Use `/init` to authorize the app so that all commands work.\n\n"
                  "- Use `/delete DELETENOW` to delete your Spark Army Knife account, this room, and "
-                 "all data associated "
-                 "with this account.\n\n"
+                 "all data associated with this account.\n\n"
+                 "- Use `/disable` to temporarily disable the Spark Army Knife account.\n\n"
+                 "- Use `/enable` to enable the Spark Army Knife account.\n\n"
                  "- Use `/support <message>` to send a message to support.\n\n"
                  "- Use `/me` to get info about your Spark Army Knife account.\n\n"
                  "- Use `/recommend <email> <message>` to send a message to another user and recommend "
@@ -748,13 +749,32 @@ class SparkBotHandler:
         elif self.spark.cmd == '/help':
             self.help()
             return
+        elif self.spark.cmd == '/enable':
+            logging.debug("Enabling account: " + self.spark.me.creator)
+            self.spark.me.delete_property('app_disabled')
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="The Spark Army Knife has now been enabled and will process messages and respond to commands.")
+            return
         if not self.spark.me or not self.spark.me.id:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Not able to find you as a user. Please do /init",
                 markdown=True)
             return
-        if self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
+        app_disabled = self.spark.me.get_property('app_disabled').value
+        if app_disabled and app_disabled.lower() == 'true':
+            logging.debug("Account is disabled: " + self.spark.me.creator)
+            return
+        if self.spark.cmd == '/disable':
+            logging.debug("Disabling account: " + self.spark.me.creator)
+            self.spark.me.set_property('app_disabled', 'true')
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="The Spark Army Knife has now been disabled and will not respond or process commands until you do "
+                     "/enable. \n\n/enable, /help, and /init are the only commands that still work.")
+            return
+        elif self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
             self.tracker_commands()
             return
         elif self.spark.cmd == '/myself':
