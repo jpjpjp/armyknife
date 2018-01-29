@@ -444,6 +444,7 @@ class SparkBotHandler:
         index = self.spark.msg_list_wcap[1]
         if index == "clear":
             self.spark.me.delete_property('topofmind')
+            self.spark.me.delete_property('topofmind_modified')
             topofmind['list'] = {}
             out = json.dumps(topofmind)
             self.spark.me.register_diffs(target='properties', subtarget='topofmind', blob=out)
@@ -577,6 +578,129 @@ class SparkBotHandler:
                 email=self.spark.person_object,
                 text=out,
                 markdown=True)
+
+    def todo_commands(self):
+        todo = self.spark.me.get_property('todo').value
+        if todo:
+            try:
+                todo = json.loads(todo)
+                toplist = {}
+                for i, el in todo['list'].items():
+                    toplist[int(i)] = el
+            except (TypeError, KeyError, ValueError):
+                toplist = {}
+        else:
+            toplist = {}
+            todo = {'email': self.spark.me.creator, 'displayName': self.spark.me.get_property('displayName').value,
+                    'title': "Todo List"}
+            if self.spark.cmd == '/followup' or self.spark.cmd == '/fu':
+                todo['title'] = "FollowUp List"
+        # Handle no params
+        if len(self.spark.msg_list) == 1 or (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'help'):
+            if len(toplist) == 0 or (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'help'):
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="To set an item in the 1:1 room: `/todo <Your comment/todo item>`\n\n"
+                         "To set an item in a group room: `/todo <ref_to_msg or 0> <Your comment/todo item>`\n\n"
+                         "Available commands: /todo [clear|reminder]\n\n"
+                         "You can also use /followup or /fu as alias to /todo.\n\n"
+                         "To delete a done item, do /done x where x is the todo item number",
+                    markdown=True)
+                return
+            else:
+                out = "**" + todo['title'] + "**"
+                modified = self.spark.me.get_property('todo_modified').value
+                if modified:
+                    timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
+                    out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
+                out += "\n\n---\n\n"
+                for i, el in sorted(toplist.items()):
+                    out = out + "**" + unicode(i+1) + "**: " + el + "\n\n"
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text=out,
+                    markdown=True)
+                return
+        # Handle more than one param
+        cmd = self.spark.msg_list[1]
+        if cmd == "clear":
+            self.spark.me.delete_property('todo')
+            self.spark.me.delete_property('todo_modified')
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Cleared your " + todo['title'])
+            return
+        if cmd == "reminder":
+            if len(self.spark.msg_list_wcap) != 3:
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="You must use reminder on or off! (/todo reminder on|off)")
+                return
+            if self.spark.msg_list_wcap[2] == "on":
+                self.spark.store.delete_pinned_messages(comment="#/TODO")
+                now = datetime.datetime.utcnow()
+                targettime = now + datetime.timedelta(days=1)
+                self.spark.store.save_pinned_message(comment='#/TODO', timestamp=targettime)
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Set reminder of top of mind list at this time each day")
+            elif self.spark.msg_list_wcap[2] == "off":
+                self.spark.store.delete_pinned_messages(comment="#/TODO")
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Deleted daily reminder of " + todo['title'])
+            return
+        now = datetime.datetime.utcnow()
+        self.spark.me.set_property('todo_modified', now.strftime('%Y-%m-%d %H:%M'))
+        if self.spark.cmd == "/done":
+            try:
+                index = int(self.spark.msg_list[1])
+            except (TypeError, ValueError, KeyError):
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Usage: /todo x done where x is a digit.")
+                return
+            if not toplist[index-1]:
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Cannot find an item " + str(index))
+                return
+            del toplist[index-1]
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Deleted list item " + str(index))
+            newlist = {}
+            for k in toplist:
+                if k < index-1:
+                    newlist[k] = toplist[k]
+                else:
+                    newlist[k - 1] = toplist[k]
+            toplist = newlist
+        else:
+            listitem = self.spark.msg_data['text'][
+                       len(self.spark.msg_list_wcap[0]) + 1:]
+            index = len(toplist)
+            toplist[index] = listitem
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Added list item **" + str(index+1) + "** with text `" + toplist[index] + "`",
+                markdown=True)
+        todo['list'] = toplist
+        out = json.dumps(todo, sort_keys=True)
+        self.spark.me.set_property('todo', out)
+        # List out the updated list
+        out = "**" + todo['title'] + "**"
+        modified = self.spark.me.get_property('todo_modified').value
+        if modified:
+            timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
+            out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
+        out += "\n\n---\n\n"
+        for i, el in sorted(toplist.items()):
+            out = out + "**" + str(i+1) + "**: " + str(el) + "\n\n"
+        self.spark.link.post_bot_message(
+            email=self.spark.person_object,
+            text=out,
+            markdown=True)
 
     def team_commands(self):
         if len(self.spark.msg_list) < 3 and not (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'list'):
@@ -812,6 +936,10 @@ class SparkBotHandler:
             return
         elif self.spark.cmd == '/topofmind' or self.spark.cmd == '/tom':
             self.topofmind_commands()
+            return
+        elif self.spark.cmd == '/todo'or self.spark.cmd == '/followup' or self.spark.cmd == '/fu' or \
+                self.spark.cmd == '/done':
+            self.todo_commands()
             return
         elif self.spark.cmd == '/recommend':
             if len(self.spark.msg_list_wcap) < 3:
