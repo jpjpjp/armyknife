@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+Jan 30, 2018
+------------
+- Add support for /topofmind reminder on HH:MM to explicitly set the UTC time for the reminder
+- Add new /todo command with aliases /followup and /fu with reminder support
+
 Jan 16, 2018
 ------------
 - Full update to support new actingweb 2.3.0 API

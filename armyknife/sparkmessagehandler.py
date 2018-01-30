@@ -134,6 +134,34 @@ class SparkMessageHandler:
                     per_user_store.delete_pinned_messages(comment="#/TOPOFMIND")
                 targettime = m["timestamp"] + datetime.timedelta(days=1)
                 per_user_store.save_pinned_message(comment='#/TOPOFMIND', timestamp=targettime)
+            elif m["comment"] == '#/TODO':
+                todo = pin_owner.get_property('todo').value
+                if todo:
+                    try:
+                        todo = json.loads(todo)
+                        toplist = {}
+                        for i, el in todo['list'].items():
+                            toplist[int(i)] = el
+                    except (TypeError, KeyError, ValueError):
+                        toplist = {}
+                else:
+                    toplist = None
+                if toplist:
+                    out = "**" + todo['title'] + "**"
+                    modified = pin_owner.get_property('todo_modified').value
+                    if modified:
+                        timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
+                        out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
+                    out += "\n\n---\n\n"
+                    for i, el in sorted(toplist.items()):
+                        out = out + "**" + unicode(i+1) + "**: " + el + "\n\n"
+                    per_user_spark.post_bot_message(
+                        email=email_owner,
+                        text=out,
+                        markdown=True)
+                    per_user_store.delete_pinned_messages(comment="#/TODO")
+                targettime = m["timestamp"] + datetime.timedelta(days=1)
+                per_user_store.save_pinned_message(comment='#/TODO', timestamp=targettime)
             else:
                 # Regular pinned reminders
                 if m["id"] and len(m["id"]) > 0:
@@ -829,6 +857,56 @@ class SparkMessageHandler:
                     text="**Pinned (" + msgs[nr]['created'] + ") from " +
                          msgs[nr]['personEmail'] + ":** " + msgs[nr]['text'],
                     markdown=True)
+        elif self.spark.cmd == '/todo' or self.spark.cmd == '/followup' or self.spark.cmd == '/fu':
+            self.spark.link.delete_message(self.spark.data['id'])
+            if len(self.spark.msg_list) > 1:
+                try:
+                    nr = int(self.spark.msg_list[1]) - 1
+                except (ValueError, TypeError, KeyError):
+                    nr = 0
+            else:
+                nr = 0
+            if nr > 10:
+                max_back = nr + 1
+            else:
+                max_back = 10
+            msgs = self.spark.link.get_messages(
+                spark_id=self.spark.room_id,
+                before_id=self.spark.data['id'],
+                max_msgs=max_back)
+            if not msgs:
+                return
+            msg_data = self.spark.link.get_message(msgs[nr]['id'])
+            if 'text' in msg_data:
+                listitem = msg_data['text']
+            else:
+                listitem = "FAILED MSG RETRIEVAL"
+            todo = self.spark.me.get_property('todo').value
+            if todo:
+                try:
+                    todo = json.loads(todo)
+                    toplist = {}
+                    for i, el in todo['list'].items():
+                        toplist[int(i)] = el
+                except (TypeError, KeyError, ValueError):
+                    toplist = {}
+            else:
+                toplist = {}
+                todo = {'email': self.spark.me.creator, 'displayName': self.spark.me.get_property('displayName').value,
+                        'title': "Todo List"}
+                if self.spark.cmd == '/followup' or self.spark.cmd == '/fu':
+                    todo['title'] = "FollowUp List"
+            index = len(toplist)
+            toplist[index] = listitem
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="Added list item **" + str(index + 1) + "** with text `" + toplist[index] + "`",
+                markdown=True)
+            todo['list'] = toplist
+            out = json.dumps(todo, sort_keys=True)
+            self.spark.me.set_property('todo', out)
+            now = datetime.datetime.now()
+            self.spark.me.set_property('todo_modified', now.strftime('%Y-%m-%d %H:%M'))
         elif self.spark.cmd == '/makepublic':
             uuid = self.spark.store.add_uuid_to_room(self.spark.room_id)
             if not uuid:

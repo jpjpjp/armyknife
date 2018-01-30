@@ -265,7 +265,12 @@ class SparkBotHandler:
                  "- Use `/roomalert` to turn on (default) 1:1 bot room alerts on new rooms.\n\n"
                  "- Use `/noannouncements` to turn off announcements about Spark Army Knife.\n\n"
                  "- Use `/announcements` to turn on (default) announcements about Spark Army Knife.\n\n"
-                 "**Top of Mind List**\n\n"
+                 "**Todo/Followup List (aliases /followup and /fu)**\n\n"
+                 "- Use `/todo Todo item...` to set a new todo item.\n\n"
+                 "- Use `/todo` to list your todo items.\n\n"
+                 "- Use `/todo clear` to clear your todo list.\n\n"
+                 "- Use `/todo reminder on HH:MM|off` to set a daily reminder at HH:MM UTC.\n\n"
+                 "**Top of Mind List (alias /tom)**\n\n"
                  "- Use `/topofmind <index> Top of mind thing ...` to list and set your top of mind "
                  "list (shortcut `/tom`).\n\n"
                  "- Use `/topofmind clear` to clear your top of mind list.\n\n"
@@ -321,7 +326,9 @@ class SparkBotHandler:
         self.spark.link.post_bot_message(
             email=self.spark.person_object,
             text="Help message for commands that can be used in any room:\n\n"
-                 "**Top of Mind List**\n\n"
+                 "**Todo/Followup List (aliases /followup and /fu)**\n\n"
+                 "- Use `/todo [x]` to set a new todo item based on the message x back, default is 1.\n\n"
+                 "**Top of Mind List (alias /tom)**\n\n"
                  "- Use `@mention /topofmind` (shortcut `/tom`) to list somebody's top of mind"
                  " list.\n\n"
                  "- Use `/topofmind` (shortcut `/tom`) in a 1:1 room to list that person's top of"
@@ -492,19 +499,26 @@ class SparkBotHandler:
                 text="Set top of mind list title to " + topofmind['title'])
             return
         if index == "reminder":
-            if len(self.spark.msg_list_wcap) != 3:
+            if len(self.spark.msg_list_wcap) < 3:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="You must use reminder on or off! (/topofmind reminder on|off)")
+                    text="You must use reminder on or off! (/topofmind reminder on|off) HH:MM (in UTC time)")
                 return
             if self.spark.msg_list_wcap[2] == "on":
-                self.spark.store.delete_pinned_messages(comment="#/TOPOFMIND")
                 now = datetime.datetime.utcnow()
-                targettime = now + datetime.timedelta(days=1)
+                if len(self.spark.msg_list_wcap) > 3:
+                    when = self.spark.msg_list_wcap[3]
+                    when_dt = datetime.datetime.strptime(when, '%H:%M')
+                    targettime = when_dt.replace(year=now.year, day=now.day, month=now.month) + \
+                        datetime.timedelta(days=1)
+                else:
+                    targettime = now + datetime.timedelta(days=1)
+                self.spark.store.delete_pinned_messages(comment="#/TOPOFMIND")
                 self.spark.store.save_pinned_message(comment='#/TOPOFMIND', timestamp=targettime)
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="Set reminder of top of mind list at this time each day")
+                    text="Set reminder of " + topofmind['title'] + " with first alert at " +
+                         targettime.strftime('%Y-%m-%d %H:%M UTC.'))
             elif self.spark.msg_list_wcap[2] == "off":
                 self.spark.store.delete_pinned_messages(comment="#/TOPOFMIND")
                 self.spark.link.post_bot_message(
@@ -601,8 +615,10 @@ class SparkBotHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="To set an item in the 1:1 room: `/todo <Your comment/todo item>`\n\n"
-                         "To set an item in a group room: `/todo <ref_to_msg or 0> <Your comment/todo item>`\n\n"
-                         "Available commands: /todo [clear|reminder]\n\n"
+                         "To set an item in a group room: `/todo <ref_to_msg>`, leaving out ref_to_msg stores the last "
+                         "message in the room as a to-do item.\n\n"
+                         "Available todo commands: `/todo clear`, `todo reminder on HH:MM` and "
+                         "`/todo reminder off`\n\n"
                          "You can also use /followup or /fu as alias to /todo.\n\n"
                          "To delete a done item, do /done x where x is the todo item number",
                     markdown=True)
@@ -631,26 +647,33 @@ class SparkBotHandler:
                 text="Cleared your " + todo['title'])
             return
         if cmd == "reminder":
-            if len(self.spark.msg_list_wcap) != 3:
+            if len(self.spark.msg_list_wcap) < 3:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="You must use reminder on or off! (/todo reminder on|off)")
+                    text="You must use reminder on or off! (/todo reminder on|off) HH:MM (in UTC time)")
                 return
             if self.spark.msg_list_wcap[2] == "on":
-                self.spark.store.delete_pinned_messages(comment="#/TODO")
                 now = datetime.datetime.utcnow()
-                targettime = now + datetime.timedelta(days=1)
+                if len(self.spark.msg_list_wcap) > 3:
+                    when = self.spark.msg_list_wcap[3]
+                    when_dt = datetime.datetime.strptime(when, '%H:%M')
+                    targettime = when_dt.replace(year=now.year, day=now.day, month=now.month) + \
+                                 datetime.timedelta(days=1)
+                else:
+                    targettime = now + datetime.timedelta(days=1)
+                self.spark.store.delete_pinned_messages(comment="#/TODO")
                 self.spark.store.save_pinned_message(comment='#/TODO', timestamp=targettime)
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="Set reminder of top of mind list at this time each day")
+                    text="Set reminder of " + todo['title'] + " with first alert at " +
+                         targettime.strftime('%Y-%m-%d %H:%M UTC.'))
             elif self.spark.msg_list_wcap[2] == "off":
                 self.spark.store.delete_pinned_messages(comment="#/TODO")
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="Deleted daily reminder of " + todo['title'])
             return
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now()
         self.spark.me.set_property('todo_modified', now.strftime('%Y-%m-%d %H:%M'))
         if self.spark.cmd == "/done":
             try:
