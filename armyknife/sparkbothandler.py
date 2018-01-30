@@ -268,6 +268,7 @@ class SparkBotHandler:
                  "**Todo/Followup List (aliases /followup and /fu)**\n\n"
                  "- Use `/todo Todo item...` to set a new todo item.\n\n"
                  "- Use `/todo` to list your todo items.\n\n"
+                 "- Use `/done x` to delete todo item x.\n\n"
                  "- Use `/todo clear` to clear your todo list.\n\n"
                  "- Use `/todo reminder on HH:MM|off` to set a daily reminder at HH:MM UTC.\n\n"
                  "**Top of Mind List (alias /tom)**\n\n"
