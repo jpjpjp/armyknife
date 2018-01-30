@@ -6,6 +6,7 @@ Jan 30, 2018
 ------------
 - Add support for /topofmind reminder on HH:MM to explicitly set the UTC time for the reminder
 - Add new /todo command with aliases /followup and /fu with reminder support
+- Add support for hidden /me full command
 
 Jan 16, 2018
 ------------

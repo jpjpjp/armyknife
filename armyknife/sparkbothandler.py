@@ -943,6 +943,13 @@ class SparkBotHandler:
                      "\n\nIf your Army Knife is fully functioning, you will also get some information about your Spark "
                      "account. If not, please do /init.",
                 markdown=True)
+            if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == "full":
+                props = self.spark.me.get_properties()
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="**Your Spark Army Knife Account Data**\n\n----\n\n" +
+                         json.dumps(props, sort_keys=True, indent=4),
+                    markdown=True)
         elif self.spark.cmd == '/delete':
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
