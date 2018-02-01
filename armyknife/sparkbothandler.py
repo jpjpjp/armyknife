@@ -865,8 +865,11 @@ class SparkBotHandler:
                     if not self.spark.link.unregister_webhook(properties['firehoseId']):
                         self.spark.link.post_bot_message(
                             email=self.spark.person_object,
-                            text="Not able to re-initialize properly from old Army Knife. Please do /init",
+                            text="Not able to re-initialize properly from the old Army Knife. Please do /init (again)",
                             markdown=True)
+                        self.spark.link.post_admin_message(
+                            text="Successfully migrated account, but could not delete firehose: " +
+                                 self.spark.person_object)
                         return
                 msghash = hashlib.sha256()
                 msghash.update(myself.passphrase)
@@ -883,14 +886,19 @@ class SparkBotHandler:
                 else:
                     self.spark.link.post_bot_message(
                         email=self.spark.person_object,
-                        text="Not able to re-initialize properly from old Army Knife. Please do /init",
+                        text="Not able to re-initialize properly from old Army Knife. Please do /init (again)",
                         markdown=True)
+                    self.spark.link.post_admin_message(
+                        text="Successfully migrated account, but could not create firehose: " +
+                             self.spark.person_object)
                     return
                 logging.debug("Successfully migrated " + self.spark.person_object)
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text="Successfully migrated your account from old Army Knife. Try with /me",
                     markdown=True)
+                self.spark.link.post_admin_message(
+                    text="Successfully migrated account: " + self.spark.person_object)
         if self.spark.cmd == '/init':
             self.init_me()
             return

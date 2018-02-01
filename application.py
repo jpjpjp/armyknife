@@ -101,8 +101,7 @@ def set_template_env():
         # Register the instance in the registry.
         app.registry['template'] = Environment(
             loader=PackageLoader('application', 'templates'),
-            autoescape=select_autoescape(['html', 'xml'])
-        )
+            autoescape=True)
     return
 
 
