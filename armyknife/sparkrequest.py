@@ -207,7 +207,7 @@ class SparkRequest:
                 logging.debug("Enriched with room data in room_id: " + str(self.room_data['id']))
         if what == 'msg' and not self.msg_data and self.object_id:
             self.msg_data = self.link.get_message(self.object_id)
-            if self.me and not self.msg_data or 'text' not in self.msg_data:
+            if self.me and (not self.msg_data or 'text' not in self.msg_data):
                 self.me.set_property('service_status', 'invalid')
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve message data to enrich from Spark. Code(" + str(
