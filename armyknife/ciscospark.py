@@ -2,10 +2,10 @@ from actingweb import auth as botauth
 
 
 # This class relies on an actingweb oauth object to use for sending oauth data requests
-class ciscospark():
+class CiscoSpark:
 
-    def __init__(self, auth, actorId, config):
-        self.actorId = actorId
+    def __init__(self, auth, actor_id, config):
+        self.actor_id = actor_id
         self.auth = auth
         self.spark = {
             'me_uri': "https://api.ciscospark.com/v1/people/me",
@@ -16,44 +16,44 @@ class ciscospark():
             'membership_uri': "https://api.ciscospark.com/v1/memberships",
         }
         self.config = config
-        self.botAuth = botauth.auth(id=None, config=self.config)
+        self.botAuth = botauth.Auth(actor_id=None, config=self.config)
         self.botAuth.oauth.token = self.config.bot['token']
 
-    def lastResponse(self):
+    def last_response(self):
         return {
             'code': self.auth.oauth.last_response_code,
             'message': self.auth.oauth.last_response_message,
         }
 
-    def getMe(self):
-        return self.auth.oauthGET(self.spark['me_uri'])
+    def get_me(self):
+        return self.auth.oauth_get(self.spark['me_uri'])
 
-    def getPerson(self, id=None):
-        if not id:
+    def get_person(self, spark_id=None):
+        if not spark_id:
             return False
-        return self.auth.oauthGET(self.spark['person_uri'] + '/' + id)
+        return self.auth.oauth_get(self.spark['person_uri'] + '/' + spark_id)
 
-    def createRoom(self, room_title=None, teamId=None):
+    def create_room(self, room_title=None, team_id=None):
         if not room_title:
             return False
         params = {
             'title': room_title,
         }
-        if teamId:
-            params['teamId'] = teamId
-        return self.auth.oauthPOST(self.spark['room_uri'], params=params)
+        if team_id:
+            params['teamId'] = team_id
+        return self.auth.oauth_post(self.spark['room_uri'], params=params)
 
-    def deleteRoom(self, id=None):
-        if not id:
+    def delete_room(self, spark_id=None):
+        if not spark_id:
             return False
-        return self.auth.oauthDELETE(self.spark['room_uri'] + '/' + id)
+        return self.auth.oauth_delete(self.spark['room_uri'] + '/' + spark_id)
 
-    def getRoom(self, id=None):
-        if not id:
+    def get_room(self, spark_id=None):
+        if not spark_id:
             return False
-        return self.auth.oauthGET(self.spark['room_uri'] + '/' + id)
+        return self.auth.oauth_get(self.spark['room_uri'] + '/' + spark_id)
 
-    def getRooms(self, get_next=False):
+    def get_rooms(self, get_next=False):
         if get_next:
             url = self.auth.oauth.next
         else:
@@ -65,10 +65,10 @@ class ciscospark():
             }
         else:
             params = None
-        return self.auth.oauthGET(url=url, params=params)
+        return self.auth.oauth_get(url=url, params=params)
 
-    def getMemberships(self, id=None, email=None, get_next=False):
-        if not id and not email and not get_next:
+    def get_memberships(self, spark_id=None, email=None, get_next=False):
+        if not spark_id and not email and not get_next:
             return False
         params = None
         if get_next:
@@ -78,37 +78,38 @@ class ciscospark():
             params = {
                 'max': 2,
             }
-        if id:  
+        if spark_id:
             params = {
-                'roomId': id,
+                'roomId': spark_id,
             }
         elif email:
             params = {
                 'personEmail': email,
             }
-        return self.auth.oauthGET(url=url, params=params)
+        return self.auth.oauth_get(url=url, params=params)
 
-    def addMember(self, id=None, email=None, personId=None):
-        if not id or (not email and not personId):
+    def add_member(self, spark_id=None, email=None, person_id=None):
+        if not spark_id or (not email and not person_id):
             return False
+        params = None
         if email:
             params = {
-                'roomId': id,
+                'roomId': spark_id,
                 'personEmail': email,
             }
-        elif personId:
+        elif person_id:
             params = {
-                'roomId': id,
-                'personId': personId,
+                'roomId': spark_id,
+                'personId': person_id,
             }
-        return self.auth.oauthPOST(self.spark['membership_uri'], params=params)
+        return self.auth.oauth_post(self.spark['membership_uri'], params=params)
 
-    def deleteMember(self, id=None):
-        if not id:
+    def delete_member(self, spark_id=None):
+        if not spark_id:
             return False
-        return self.auth.oauthDELETE(self.spark['membership_uri'] + '/' + id)
+        return self.auth.oauth_delete(self.spark['membership_uri'] + '/' + spark_id)
 
-    def messageUser(self, email=None, text='', markdown=False):
+    def message_user(self, email=None, text='', markdown=False):
         if not email:
             return False
         if markdown:
@@ -121,28 +122,28 @@ class ciscospark():
                 'toPersonEmail': email,
                 'text': text,
             }
-        return self.auth.oauthPOST(self.spark['message_uri'], params=params)
+        return self.auth.oauth_post(self.spark['message_uri'], params=params)
 
-    def postMessage(self, id=None, text='', markdown=False, files=None):
-        if not id:
+    def post_message(self, spark_id=None, text='', markdown=False, files=None):
+        if not spark_id:
             return False
         if markdown:
             params = {
-                'roomId': id,
+                'roomId': spark_id,
                 'markdown': text,
             }
         else:
             params = {
-                'roomId': id,
+                'roomId': spark_id,
                 'text': text,
             }
         if files:
             params = {
                 'files': files,
             }
-        return self.auth.oauthPOST(self.spark['message_uri'], params=params)
+        return self.auth.oauth_post(self.spark['message_uri'], params=params)
 
-    def postAdminMessage(self, text='', markdown=False, files=None):
+    def post_admin_message(self, text='', markdown=False, files=None):
         if not self.config.bot["admin_room"] or len(self.config.bot["admin_room"]) == 0:
             return False
         if markdown:
@@ -159,10 +160,10 @@ class ciscospark():
             params = {
                 'files': files,
             }
-        return self.botAuth.oauthPOST(self.spark['message_uri'], params=params)
+        return self.botAuth.oauth_post(self.spark['message_uri'], params=params)
 
-    def postBotMessage(self, email=None, roomId=None, text='', markdown=False, files=None):
-        if not email and not roomId:
+    def post_bot_message(self, email=None, spark_id=None, text='', markdown=False, files=None):
+        if not email and not spark_id:
             return False
         if email:
             params = {
@@ -170,7 +171,7 @@ class ciscospark():
             }
         else:
             params = {
-                'roomId': roomId,
+                'roomId': spark_id,
             }
         if markdown:
             params['markdown'] = text
@@ -180,47 +181,55 @@ class ciscospark():
             params = {
                 'files': files,
             }
-        return self.botAuth.oauthPOST(self.spark['message_uri'], params=params)
+        return self.botAuth.oauth_post(self.spark['message_uri'], params=params)
 
-    def getMessage(self, id=None):
-        if not id:
+    def get_message(self, spark_id=None):
+        if not spark_id:
             return False
-        return self.auth.oauthGET(self.spark['message_uri'] + '/' + id)
+        ret = self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
+        if self.auth.oauth.last_response_code == 404:
+            refresh = self.auth.oauth.oauth_refresh_token(refresh_token=self.auth.refresh_token)
+            if not refresh:
+                logging.warn('Tried token refresh based on 404 from Spark, but failed')
+            else:
+                ret = self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
+        return ret
 
-    def deleteMessage(self, id=None):
-        if not id:
+    def delete_message(self, spark_id=None):
+        if not spark_id:
             return False
-        return self.auth.oauthDELETE(self.spark['message_uri'] + '/' + id)
+        return self.auth.oauth_delete(self.spark['message_uri'] + '/' + spark_id)
 
-    def getMessages(self, roomId=None, beforeId=None, beforeDate=None, max=10):
-        if not roomId:
+    def get_messages(self, spark_id=None, before_id=None, before_date=None, max_msgs=10):
+        if not spark_id:
             return False
         params = {
-            'roomId': roomId,
-            'max': max,
+            'roomId': spark_id,
+            'max': max_msgs,
         }
-        if max == 0:
+        if max_msgs == 0:
             del params['max']
             params = {}
             url = self.auth.oauth.next
         else:
             url = self.spark['message_uri']
-        if beforeId:
-            params.update({'beforeMessage': beforeId})
-        elif beforeDate:
-            params.update({'before': beforeDate})
-        results = self.auth.oauthGET(url, params=params)
+        if before_id:
+            params.update({'beforeMessage': before_id})
+        elif before_date:
+            params.update({'before': before_date})
+        results = self.auth.oauth_get(url, params=params)
         if results and 'items' in results:
             return results['items']
         else:
             return None
 
-    def getAttachmentDetails(self, url=None):
+    def get_attachment_details(self, url=None):
         if not url or len(url) == 0:
             return None
-        return self.auth.oauthHEAD(url)
+        return self.auth.oauth_head(url)
 
-    def registerWebHook(self, name=None, target=None, resource='messages', event='created', filter='', secret=None):
+    def register_webhook(self, name=None, target=None, resource='messages', event='created', webhook_filter='',
+                         secret=None):
         if not target or not name:
             return None
         params = {
@@ -228,31 +237,31 @@ class ciscospark():
             'targetUrl': target,
             'resource': resource,
             'event': event,
-            'filter': filter,
+            'filter': webhook_filter,
         }
         if secret and len(secret) > 0:
             params['secret'] = secret
-        if len(filter) == 0:
+        if len(webhook_filter) == 0:
             del params['filter']
-        return self.auth.oauthPOST(self.spark['webhook_uri'], params=params)
+        return self.auth.oauth_post(self.spark['webhook_uri'], params=params)
 
-    def unregisterWebHook(self, id=None):
-        if not id:
+    def unregister_webhook(self, spark_id=None):
+        if not spark_id:
             return None
-        return self.auth.oauthDELETE(self.spark['webhook_uri'] + '/' + id)
+        return self.auth.oauth_delete(self.spark['webhook_uri'] + '/' + spark_id)
 
-    def getWebHook(self, id):
-        return self.auth.oauthGET(self.spark['webhook_uri'] + "/" + id)
+    def get_webhook(self, spark_id):
+        return self.auth.oauth_get(self.spark['webhook_uri'] + "/" + spark_id)
 
-    def getAllWebHooks(self, max=100, uri=None):
+    def get_all_webhooks(self, max_webhooks=100, uri=None):
         if uri:
             params = None
         else:
             uri = self.spark['webhook_uri']
             params = {
-                'max': max,
+                'max': max_webhooks,
             }
-        results = self.auth.oauthGET(uri, params)
+        results = self.auth.oauth_get(uri, params)
         if results:
             ret = {
                 'webhooks': results['items'],
@@ -264,15 +273,15 @@ class ciscospark():
         else:
             return None
 
-    def cleanAllWebhooks(self, id=False):
-        ret = self.getAllWebHooks()
+    def clean_all_webhooks(self, spark_id=False):
+        ret = self.get_all_webhooks()
         while 1:
             if not ret:
                 break
             for webhook in ret['webhooks']:
-                self.unregisterWebHook(id=webhook['id'])
+                self.unregister_webhook(spark_id=webhook['id'])
             if not ret['next']:
                 break
-            ret = self.getAllWebHooks(uri=ret['next'])
-        if id:
-            self.postBotMessage(roomId=id, text='Completed clean up of webhooks.')
+            ret = self.get_all_webhooks(uri=ret['next'])
+        if spark_id:
+            self.post_bot_message(spark_id=spark_id, text='Completed clean up of webhooks.')
