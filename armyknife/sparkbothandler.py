@@ -836,7 +836,7 @@ class SparkBotHandler:
         # There shouldn't be other room types, but just in case
         if self.spark.room_type != 'direct':
             return
-        if not self.spark.me or not self.spark.me.id and self.spark.person_object == 'greger@hudya.no':
+        if not self.spark.me or not self.spark.me.id:
             migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + self.spark.person_object,
                                    headers={
                                        'Authorization': 'Bearer 65kN%57ItPNSQVHS',
@@ -886,7 +886,9 @@ class SparkBotHandler:
                 else:
                     self.spark.link.post_bot_message(
                         email=self.spark.person_object,
-                        text="Not able to re-initialize properly from old Army Knife. Please do /init (again)",
+                        text="Welcome to the new Spark Army Knife!\n\n"
+                             "Not able to re-initialize properly from old Army Knife."
+                             "Your account has probably timed out. Please do /init (again)",
                         markdown=True)
                     self.spark.link.post_admin_message(
                         text="Successfully migrated account, but could not create firehose: " +
