@@ -1,3 +1,4 @@
+import logging
 from actingweb import auth as botauth
 
 
