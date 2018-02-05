@@ -132,28 +132,37 @@ class OnAWSpark(object, on_aw.OnAWBase):
         hook_id = spark.me.get_property('firehoseId').value
         spark.me.delete_property('token_invalid')
         spark.me.delete_property('service_status')
-        if not hook_id or not spark.link.get_webhook(hook_id):
-            msghash = hashlib.sha256()
-            msghash.update(spark.me.passphrase)
-            hook = spark.link.register_webhook(
-                name='Firehose',
-                target=self.config.root + spark.me.id + '/callbacks/firehose',
-                resource='all',
-                event='all',
-                secret=msghash.hexdigest()
-                )
-            if hook and hook['id']:
-                logging.debug('Successfully registered messages firehose webhook')
-                spark.me.set_property('firehoseId', hook['id'])
-            else:
-                logging.debug('Failed to register messages firehose webhook')
-                spark.link.post_admin_message(text='Failed to register firehose for new user: ' + email)
+        if hook_id:
+            if not spark.link.unregister_webhook(hook_id) and self.auth.oauth.last_response_code != 404:
                 spark.link.post_bot_message(
                     email=email,
-                    text="Hi there! Welcome to the **Spark Army Knife**! \n\n"
-                         "You have successfully authorized access.\n\nSend me commands starting with /. Like /help",
+                    text="Not able to delete old Spark webhook link, do /init and authorize again "
+                         "or do `/support your_msg` to get help",
                     markdown=True)
+                spark.link.post_admin_message(
+                    text="Successfully authorized account, but could not delete old firehose: " + email)
                 return True
+        msghash = hashlib.sha256()
+        msghash.update(spark.me.passphrase)
+        hook = spark.link.register_webhook(
+            name='Firehose',
+            target=self.config.root + spark.me.id + '/callbacks/firehose',
+            resource='all',
+            event='all',
+            secret=msghash.hexdigest()
+            )
+        if hook and hook['id']:
+            logging.debug('Successfully registered messages firehose webhook')
+            spark.me.set_property('firehoseId', hook['id'])
+        else:
+            logging.debug('Failed to register messages firehose webhook')
+            spark.link.post_admin_message(text='Failed to register firehose for new user: ' + email)
+            spark.link.post_bot_message(
+                email=email,
+                text="Hi there! Welcome to the **Spark Army Knife**! \n\n"
+                     "You have successfully authorized access.\n\nSend me commands starting with /. Like /help",
+                markdown=True)
+            return True
         spark.link.post_bot_message(
             email=email,
             text="Hi there! Welcome to the **Spark Army Knife**! \n\n"
