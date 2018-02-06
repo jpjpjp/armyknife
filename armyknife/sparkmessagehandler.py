@@ -434,6 +434,10 @@ class SparkMessageHandler:
         # Ignore all messages from sparkbots
         if "@sparkbot.io" in self.spark.person_object.lower():
             return
+        app_disabled = self.spark.me.get_property('app_disabled').value
+        if app_disabled and app_disabled.lower() == 'true':
+            logging.debug("Account is disabled: " + self.spark.me.creator)
+            return
         self.validate_token()
         self.global_actions()
         self.message_autoreply()
@@ -442,6 +446,10 @@ class SparkMessageHandler:
         return
 
     def memberships_created(self):
+        app_disabled = self.spark.me.get_property('app_disabled').value
+        if app_disabled and app_disabled.lower() == 'true':
+            logging.debug("Account is disabled: " + self.spark.me.creator)
+            return
         if not self.spark.enrich_data('room'):
             return
         if self.spark.person_object == self.spark.me.creator:
