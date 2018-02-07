@@ -141,6 +141,8 @@ class OnAWSpark(object, on_aw.OnAWBase):
                     markdown=True)
                 spark.link.post_admin_message(
                     text="Successfully authorized account, but could not delete old firehose: " + email)
+                spark.link.post_admin_message(
+                    text=str(self.auth.oauth.last_response_code) + ':' + self.auth.oauth.last_response_message)
                 return True
         msghash = hashlib.sha256()
         msghash.update(spark.me.passphrase)

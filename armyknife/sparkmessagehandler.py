@@ -445,6 +445,200 @@ class SparkMessageHandler:
         self.message_commands_to_me()
         return
 
+    def extract_teamlist(self, team_str):
+        team_list = []
+        if team_str:
+            if team_str[0:1] == '#':
+                next_team = self.spark.link.get_memberships(spark_id=team_str[1:])
+                members = []
+                while next_team and 'items' in next_team:
+                    members.extend(next_team['items'])
+                    next_team = self.spark.link.get_memberships(get_next=True)
+                for m in members:
+                    team_list.append(m['personEmail'])
+                if len(team_list) == 0:
+                    logging.info("Not able to retrieve members for linked room in /team")
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Not able to get members of room " + team_str[1:])
+                    return
+            else:
+                try:
+                    team_list = json.loads(team_str)
+                except (KeyError, TypeError, ValueError):
+                    team_list = team_str
+        return team_list
+
+    def manageteam_command(self):
+        if len(self.spark.msg_list) < 3 and not (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'list'):
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Usage: `/manageteam add|remove|list <teamname> <email(s)>` where emails are"
+                     " comma-separated\n\n"
+                     "Use `/manageteam list` to list all teams",
+                markdown=True)
+            return
+        team_cmd = self.spark.msg_list[1]
+        if len(self.spark.msg_list) == 2 and team_cmd == 'list':
+            out = "**List of teams**\n\n----\n\n"
+            properties = self.spark.me.get_properties()
+            if properties and len(properties) > 0:
+                found = False
+                for name, value in properties.items():
+                    if 'team-' in name:
+                        team = self.extract_teamlist(value)
+                        found = True
+                        out += "**" + name[len('team-'):] + "**: "
+                        sep = ""
+                        for t in team:
+                            out += sep + str(t)
+                            sep = ","
+                        out += "\n\n"
+                if not found:
+                    out += "No teams\n\n"
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text=out,
+                markdown=True)
+            return
+        team_name = self.spark.msg_list[2]
+        if team_cmd != 'add' and team_cmd != 'remove' and team_cmd != 'list' and team_cmd != 'delete':
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Usage: `/manageteam add|remove|list|delete <teamname> <email(s)>` where emails"
+                     " are comma-separated",
+                markdown=True)
+            return
+        if len(self.spark.msg_list) > 3:
+            emails = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
+                                                 len(self.spark.msg_list[1]) +
+                                                 len(self.spark.msg_list[2]) +
+                                                 2:].replace(" ", "").split(',')
+        else:
+            emails = []
+        team_str = self.spark.me.get_property('team-' + team_name).value
+        team_list = self.extract_teamlist(team_str)
+        out = ''
+        if len(team_list) == 0 and team_cmd == 'list':
+            out = "The team does not exist."
+        elif team_cmd == 'list':
+            out = "**Team members of team " + team_name + "**\n\n"
+            for t in team_list:
+                out += t + "\n\n"
+            team_list = []
+        elif team_cmd == 'delete':
+            if len(self.spark.msg_list) > 3:
+                out += "Use remove to remove an email address from a team. Delete is to delete an entire team!\n\n"
+            else:
+                out += "Deleted team " + team_name + "\n\n"
+                self.spark.me.delete_property('team-' + team_name)
+            team_list = []
+        elif team_str and team_str[0:1] == '#':
+            out += "This team is linked to a room, so only /manageteam list and delete commands are allowed."
+            team_list = []
+        elif team_cmd == 'add':
+            for e in emails:
+                out += "Added " + e + "\n\n"
+                team_list.append(str(e.strip()))
+        elif team_cmd == 'init':
+            for e in emails:
+                out += "Added " + e + "\n\n"
+                team_list.append(str(e))
+        elif team_cmd == 'remove':
+            for e in emails:
+                for e2 in team_list:
+                    if e == e2:
+                        team_list.remove(str(e.strip()))
+                        out += "Removed " + e + "\n\n"
+        if len(team_list) > 0:
+            self.spark.me.set_property('team-' + team_name, json.dumps(team_list))
+        if len(out) > 0:
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text=out,
+                markdown=True)
+
+    def team_command(self):
+        self.spark.link.delete_message(self.spark.object_id)
+        if len(self.spark.msg_list) != 3:
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="Usage: `/team link|init|add|remove|verify|sync team_name`", markdown=True)
+            return
+        team_cmd = self.spark.msg_list[1]
+        team_name = self.spark.msg_list[2]
+        team_str = self.spark.me.get_property('team-' + team_name).value
+        team_list = self.extract_teamlist(team_str)
+        if not self.spark.enrich_data('room'):
+            return
+        if self.spark.room_data and 'title' in self.spark.room_data:
+            title = self.spark.room_data['title']
+        else:
+            title = 'Unknown'
+        out = ''
+        next_members = self.spark.link.get_memberships(spark_id=self.spark.room_id)
+        members = []
+        while next_members and 'items' in next_members:
+            members.extend(next_members['items'])
+            next_members = self.spark.link.get_memberships(get_next=True)
+        if len(members) == 0:
+            logging.info("Not able to retrieve members for room in /team")
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="Not able to get members of room.")
+            return
+        if team_cmd == 'init':
+            team_list = []
+            out = "**Initializing team " + team_name + " with members from room " + title + "**\n\n"
+            for m in members:
+                out += "Added " + m['personEmail'] + "\n\n"
+                team_list.append(str(m['personEmail']))
+            if len(team_list) > 0:
+                self.spark.me.set_property('team-' + team_name, json.dumps(team_list))
+        elif team_cmd == 'link':
+            if 'id' in self.spark.room_data:
+                self.spark.me.set_property('team-' + team_name, '#' + self.spark.room_id)
+                out = "**Linked team " + team_name + " to members of room " + title + "**\n\n"
+            else:
+                out = "Error in getting room data.\n\n"
+        elif team_cmd == 'add' or team_cmd == 'remove' or team_cmd == 'verify' or team_cmd == 'sync':
+            if len(team_list) == 0:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="You tried to use /team with a non-existent team. Did you mean team init?")
+            else:
+                if team_cmd == 'add':
+                    out = "**Adding "
+                elif team_cmd == 'remove':
+                    out = "**Removing "
+                elif team_cmd == 'sync':
+                    out = "**Synchronizing "
+                else:
+                    out = "**Verifying "
+                out += "team members from " + team_name + " in room " + title + "**\n\n"
+                for m in members:
+                    try:
+                        team_list.remove(m['personEmail'])
+                        if team_cmd == 'remove':
+                            self.spark.link.delete_member(spark_id=m['id'])
+                            out += "Removed from room: " + m['personEmail'] + "\n\n"
+                    except ValueError:
+                        if team_cmd == 'verify':
+                            out += "In room, but not in team: " + m['personEmail'] + "\n\n"
+                        elif team_cmd == 'sync':
+                            out += "Removed from room: " + m['personEmail'] + "\n\n"
+                            self.spark.link.delete_member(spark_id=m['id'])
+                for e in team_list:
+                    if team_cmd == 'add' or team_cmd == 'sync':
+                        self.spark.link.add_member(spark_id=self.spark.room_id, email=e)
+                        out += "Added to room: " + e + "\n\n"
+                    elif team_cmd == 'verify':
+                        out += "Not in room, but in team: " + e + "\n\n"
+        self.spark.link.post_bot_message(
+            email=self.spark.me.creator,
+            text=out,
+            markdown=True)
+
     def memberships_created(self):
         app_disabled = self.spark.me.get_property('app_disabled').value
         if app_disabled and app_disabled.lower() == 'true':
@@ -567,6 +761,9 @@ class SparkMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Successfully created new Army Knife webhook.")
+        elif self.spark.cmd == '/manageteam':
+            self.manageteam_command()
+            return
         elif self.spark.cmd == '/countrooms':
             out = "**Counting rooms...**\n\n----\n\n"
             self.spark.link.post_bot_message(
@@ -1026,85 +1223,8 @@ class SparkMessageHandler:
                 email=self.spark.me.creator,
                 text=memberlist, markdown=True)
         elif self.spark.cmd == '/team':
-            self.spark.link.delete_message(self.spark.object_id)
-            if len(self.spark.msg_list) != 3:
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Usage: `/team init|add|remove|verify|sync team_name`", markdown=True)
-                return
-            team_cmd = self.spark.msg_list[1]
-            team_name = self.spark.msg_list[2]
-            team_str = self.spark.me.get_property('team-' + team_name).value
-            if not team_str:
-                team_list = []
-            else:
-                try:
-                    team_list = json.loads(team_str)
-                except (KeyError, TypeError, ValueError):
-                    team_list = []
-            if not self.spark.enrich_data('room'):
-                return
-            if self.spark.room_data and 'title' in self.spark.room_data:
-                title = self.spark.room_data['title']
-            else:
-                title = 'Unknown'
-            next_members = self.spark.link.get_memberships(spark_id=self.spark.room_id)
-            members = []
-            while next_members and 'items' in next_members:
-                members.extend(next_members['items'])
-                next_members = self.spark.link.get_memberships(get_next=True)
-            if len(members) == 0:
-                logging.info("Not able to retrieve members for room in /team")
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Not able to get members of room.")
-                return
-            out = ''
-            if team_cmd == 'init':
-                team_list = []
-                out = "**Initializing team " + team_name + " with members from room " + title + "**\n\n"
-                for m in members:
-                    out += "Added " + m['personEmail'] + "\n\n"
-                    team_list.append(str(m['personEmail']))
-                if len(team_list) > 0:
-                    self.spark.me.set_property('team-' + team_name, json.dumps(team_list))
-            elif team_cmd == 'add' or team_cmd == 'remove' or team_cmd == 'verify' or team_cmd == 'sync':
-                if len(team_list) == 0:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text="You tried to use /team with a non-existent team. Did you mean team init?")
-                else:
-                    if team_cmd == 'add':
-                        out = "**Adding "
-                    elif team_cmd == 'remove':
-                        out = "**Removing "
-                    elif team_cmd == 'sync':
-                        out = "**Synchronizing "
-                    else:
-                        out = "**Verifying "
-                    out += "team members from " + team_name + " in room " + title + "**\n\n"
-                    for m in members:
-                        try:
-                            team_list.remove(m['personEmail'])
-                            if team_cmd == 'remove':
-                                self.spark.link.delete_member(spark_id=m['id'])
-                                out += "Removed from room: " + m['personEmail'] + "\n\n"
-                        except ValueError:
-                            if team_cmd == 'verify':
-                                out += "In room, but not in team: " + m['personEmail'] + "\n\n"
-                            elif team_cmd == 'sync':
-                                out += "Removed from room: " + m['personEmail'] + "\n\n"
-                                self.spark.link.delete_member(spark_id=m['id'])
-                    for e in team_list:
-                        if team_cmd == 'add' or team_cmd == 'sync':
-                            self.spark.link.add_member(spark_id=self.spark.room_id, email=e)
-                            out += "Added to room: " + e + "\n\n"
-                        elif team_cmd == 'verify':
-                            out += "Not in room, but in team: " + e + "\n\n"
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text=out,
-                markdown=True)
+            self.team_command()
+            return
         elif self.spark.cmd == '/copyroom':
             # Only allow copyroom in group rooms
             if self.spark.room_type == 'direct':

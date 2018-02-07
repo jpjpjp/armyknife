@@ -77,7 +77,7 @@ class CiscoSpark:
         else:
             url = self.spark['membership_uri']
             params = {
-                'max': 2,
+                'max': 100,
             }
         if spark_id:
             params = {
