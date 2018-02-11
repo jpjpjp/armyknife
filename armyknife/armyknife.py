@@ -278,3 +278,36 @@ class ArmyKnife:
                     del_msg = attribute.Attributes("pinned", m, config=self.config)
                     del_msg.delete_attr(a)
         return ret
+
+    def stats_incr_command(self, command=None):
+        if not command:
+            return False
+        message_bucket = attribute.Attributes("stats", "commands", config=self.config)
+        attrs = message_bucket.get_attr(command)
+        if attrs:
+            count = attrs["data"]["count"]
+            count += 1
+        else:
+            count = 1
+        message_bucket.set_attr(
+            command,
+            data={
+                "command": command,
+                "count": count
+            }
+        )
+        return True
+
+    def get_stats_commands(self):
+        stat_bucket = attribute.Attributes("stats", "command", config=self.config)
+        stats = stat_bucket.get_bucket()
+        ret = []
+        if not stats:
+            return ret
+        for p, v in stats.items():
+            ret.append({
+                "command": v["data"]["command"],
+                "count": v["data"]["count"]
+            }
+            )
+        return ret

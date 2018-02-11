@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+Feb 7, 2018
+------------
+- Add /team link team_name to link team_name to the always current members of the room
+
 Jan 30, 2018
 ------------
 - Add support for /topofmind reminder on HH:MM to explicitly set the UTC time for the reminder
