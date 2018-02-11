@@ -669,7 +669,7 @@ class SparkBotHandler:
                     when = self.spark.msg_list_wcap[3]
                     when_dt = datetime.datetime.strptime(when, '%H:%M')
                     targettime = when_dt.replace(year=now.year, day=now.day, month=now.month) + \
-                                 datetime.timedelta(days=1)
+                        datetime.timedelta(days=1)
                 else:
                     targettime = now + datetime.timedelta(days=1)
                 self.spark.store.delete_pinned_messages(comment="#/TODO")
@@ -745,6 +745,13 @@ class SparkBotHandler:
         if self.spark.room_id == self.spark.config.bot["admin_room"]:
             logging.debug("Got a message in the admin room...")
             self.admin_commands()
+            return
+        if len(self.spark.msg_list) == 1 and '/' not in self.spark.cmd:
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Hi there! Unknown command. Use /help to get help.")
+            return
+        if self.spark.cmd[0:1] != '/':
             return
         self.spark.store.stats_incr_command(self.spark.cmd)
         if self.spark.room_type == 'group':
@@ -961,7 +968,3 @@ class SparkBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="You will now get Spark Army Knife announcements!")
-        elif len(self.spark.msg_list) == 1 and '/' not in self.spark.cmd:
-            self.spark.link.post_bot_message(
-                email=self.spark.person_object,
-                text="Hi there! Unknown command. Use /help to get help.")

@@ -1405,6 +1405,8 @@ class SparkMessageHandler:
             # We only execute commands in messages from the Spark user attached
             # to this ArmyKnife actor (not to).
             return
+        if self.spark.cmd[0:1] != '/':
+            return
         # If the command was run in the bot room, it was already counted there
         if self.spark.room_id != self.spark.chat_room_id:
             self.spark.store.stats_incr_command(self.spark.cmd)
