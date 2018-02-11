@@ -217,6 +217,16 @@ class SparkBotHandler:
             self.spark.link.post_admin_message("Sent the following message to " + self.spark.msg_list[2] +
                                                ":\n\n" + message,
                                                markdown=True)
+        elif self.spark.cmd == "/stats":
+            stats = self.spark.store.get_stats_commands()
+            out = ""
+            if stats:
+                out += "**Command Statistics**\n\n----\n\n"
+            else:
+                out += "No command statistics available.\n\n"
+            for v in sorted(stats, key=lambda d: d['count'], reverse=True):
+                out += v["command"] + ": " + str(v["count"]) + "  \n"
+            self.spark.link.post_admin_message(out, markdown=True)
         elif self.spark.cmd == "/help":
             self.spark.link.post_admin_message(
                 "**Spark Army Knife: Admin Help**\n\n"
@@ -736,6 +746,7 @@ class SparkBotHandler:
             logging.debug("Got a message in the admin room...")
             self.admin_commands()
             return
+        self.spark.store.stats_incr_command(self.spark.cmd)
         if self.spark.room_type == 'group':
             self.group_commands()
             return
@@ -878,9 +889,6 @@ class SparkBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Your message has been sent to support.")
-        elif self.spark.cmd == '/manageteam':
-            self.team_commands()
-            return
         elif self.spark.cmd == '/topofmind' or self.spark.cmd == '/tom':
             self.topofmind_commands()
             return

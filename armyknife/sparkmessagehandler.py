@@ -1397,11 +1397,17 @@ class SparkMessageHandler:
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
             return
+        if self.spark.room_id == self.spark.config.bot["admin_room"]:
+            logging.debug("Integration firehose in admin room, dropping...")
+            return
         self.spark.store.process_message(self.spark.data)
         if self.spark.person_id != self.spark.actor_spark_id:
             # We only execute commands in messages from the Spark user attached
             # to this ArmyKnife actor (not to).
             return
+        # If the command was run in the bot room, it was already counted there
+        if self.spark.room_id != self.spark.chat_room_id:
+            self.spark.store.stats_incr_command(self.spark.cmd)
         if not self.spark.service_status or \
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
