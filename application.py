@@ -81,7 +81,7 @@ def set_config():
             auto_accept_default_relationship=True,
             www_auth="oauth",
             ui=True,
-            logLevel="DEBUG",
+            logLevel="INFO",
             bot={
                 "token": bot_token,
                 "email": bot_email,
