@@ -112,7 +112,7 @@ class SparkMessageHandler:
                 topofmind = pin_owner.get_property('topofmind').value
                 if topofmind:
                     try:
-                        topofmind = json.loads(topofmind)
+                        topofmind = json.loads(topofmind, strict=False)
                         toplist = topofmind['list']
                     except (TypeError, KeyError, ValueError):
                         toplist = {}
@@ -138,7 +138,7 @@ class SparkMessageHandler:
                 todo = pin_owner.get_property('todo').value
                 if todo:
                     try:
-                        todo = json.loads(todo)
+                        todo = json.loads(todo, strict=False)
                         toplist = {}
                         for i, el in todo['list'].items():
                             toplist[int(i)] = el
@@ -304,7 +304,7 @@ class SparkMessageHandler:
             toplist = None
             if topofmind:
                 try:
-                    topofmind = json.loads(topofmind)
+                    topofmind = json.loads(topofmind, strict=False)
                     toplist = topofmind['list']
                 except (TypeError, KeyError, ValueError):
                     toplist = None
@@ -1089,7 +1089,7 @@ class SparkMessageHandler:
             todo = self.spark.me.get_property('todo').value
             if todo:
                 try:
-                    todo = json.loads(todo)
+                    todo = json.loads(todo, strict=False)
                     toplist = {}
                     for i, el in todo['list'].items():
                         toplist[int(i)] = el
