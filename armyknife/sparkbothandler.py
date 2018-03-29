@@ -231,7 +231,8 @@ class SparkBotHandler:
             self.spark.link.post_admin_message(
                 "**Spark Army Knife: Admin Help**\n\n"
                 "Use `/mail <email> message` to send somebody a message from the bot.\n\n"
-                "Use `/all-users` for listing and messaging all users.",
+                "Use `/all-users` for listing and messaging all users.\n\n"
+                "Use `/stats` to see statistics on command usage.",
                 markdown=True)
         elif self.spark.cmd == "/all-users":
             self.exec_all_users()
@@ -427,7 +428,7 @@ class SparkBotHandler:
         topofmind = self.spark.me.get_property('topofmind').value
         if topofmind:
             try:
-                topofmind = json.loads(topofmind)
+                topofmind = json.loads(topofmind, strict=False)
                 toplist = topofmind['list']
             except (TypeError, KeyError, ValueError):
                 toplist = {}
@@ -590,7 +591,7 @@ class SparkBotHandler:
             self.spark.me.set_property('topofmind', out)
             self.spark.me.register_diffs(target='properties', subtarget='topofmind', blob=out)
             # List out the updated list
-            toplist = json.loads(out)['list']
+            toplist = json.loads(out, strict=False)['list']
             out = "**" + topofmind['title'] + "**"
             modified = self.spark.me.get_property('topofmind_modified').value
             if modified:
@@ -608,7 +609,7 @@ class SparkBotHandler:
         todo = self.spark.me.get_property('todo').value
         if todo:
             try:
-                todo = json.loads(todo)
+                todo = json.loads(todo, strict=False)
                 toplist = {}
                 for i, el in todo['list'].items():
                     toplist[int(i)] = el
@@ -730,7 +731,7 @@ class SparkBotHandler:
             out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
         out += "\n\n---\n\n"
         for i, el in sorted(toplist.items()):
-            out = out + "**" + str(i+1) + "**: " + str(el) + "\n\n"
+            out = out + "**" + str(i+1) + "**: " + el + "\n\n"
         self.spark.link.post_bot_message(
             email=self.spark.person_object,
             text=out,
@@ -761,10 +762,11 @@ class SparkBotHandler:
         if self.spark.room_type != 'direct':
             return
         if not self.spark.me or not self.spark.me.id:
-            migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + self.spark.person_object,
-                                   headers={
-                                       'Authorization': 'Bearer 65kN%57ItPNSQVHS',
-                                    })
+            # migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + self.spark.person_object,
+            #                       headers={
+            #                           'Authorization': 'Bearer 65kN%57ItPNSQVHS',
+            #                        })
+            migrate = None
             if migrate:
                 properties = migrate.json()
                 myself = actor.Actor(config=self.spark.config)
