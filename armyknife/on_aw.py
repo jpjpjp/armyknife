@@ -133,7 +133,8 @@ class OnAWSpark(object, on_aw.OnAWBase):
         spark.me.delete_property('token_invalid')
         spark.me.delete_property('service_status')
         if hook_id:
-            if not spark.link.unregister_webhook(hook_id) and self.auth.oauth.last_response_code != 404:
+            if not spark.link.unregister_webhook(hook_id) and self.auth.oauth.last_response_code != 404 and \
+                    self.auth.oauth.last_response_code != 0:
                 spark.link.post_bot_message(
                     email=email,
                     text="Not able to delete old Spark webhook link, do /init and authorize again "
