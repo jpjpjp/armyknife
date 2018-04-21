@@ -13,7 +13,7 @@ class Bots(webapp2.RequestHandler):
             params=self.request.params,
             body=self.request.body,
             headers=self.request.headers)
-        self.handler = bot.BotHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWSpark())
+        self.handler = bot.BotHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWWebexTeams())
 
     def post(self, path):
         self.init()

@@ -1,12 +1,11 @@
 import json
 import datetime
 import logging
-import requests
 import hashlib
 from actingweb import actor
 
 
-class SparkBotHandler:
+class WebexTeamsBotHandler:
     """ Class with all methods to handle bot requests
     """
 
@@ -25,7 +24,7 @@ class SparkBotHandler:
         if not self.spark.is_actor_user:
             self.spark.link.post_message(
                 self.spark.room_id,
-                "**Welcome to Spark Army Knife, " + self.spark.person_object +
+                "**Welcome to Cisco Webex Teams Army Knife, " + self.spark.person_object +
                 "!**\n\n Please authorize the app by clicking the following link: " +
                 url + "/www",
                 markdown=True)
@@ -45,7 +44,7 @@ class SparkBotHandler:
             if self.spark.room_type == 'group':
                 self.spark.link.post_bot_message(
                     spark_id=self.spark.room_id,
-                    text="**Welcome to Spark Army Knife!**\n\n To use, please create a 1:1 room with " +
+                    text="**Welcome to Cisco Webex Teams Army Knife!**\n\n To use, please create a 1:1 room with " +
                          self.spark.config.bot['email'] +
                          ". If you don't get an answer, type /init in that room.",
                     markdown=True)
@@ -229,7 +228,7 @@ class SparkBotHandler:
             self.spark.link.post_admin_message(out, markdown=True)
         elif self.spark.cmd == "/help":
             self.spark.link.post_admin_message(
-                "**Spark Army Knife: Admin Help**\n\n"
+                "**Cisco Webex Teams Army Knife: Admin Help**\n\n"
                 "Use `/mail <email> message` to send somebody a message from the bot.\n\n"
                 "Use `/all-users` for listing and messaging all users.\n\n"
                 "Use `/stats` to see statistics on command usage.",
@@ -244,38 +243,38 @@ class SparkBotHandler:
         if self.spark.cmd == '/help' or ('/' not in self.spark.cmd and len(self.spark.msg_list_wcap) <= 2):
             self.spark.link.post_bot_message(
                 spark_id=self.spark.room_id,
-                text="**Hi there from the Spark Army Knife!**\n\n"
+                text="**Hi there from the Cisco Webex Teams Army Knife!**\n\n"
                      "To use, please create a 1:1 room with the bot (" +
                      self.spark.config.bot['email'] + ").",
                 markdown=True)
             if not self.spark.is_actor_user:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="**Hi there from the Spark Army Knife!**\n\n"
+                    text="**Hi there from the Cisco Webex Teams Army Knife!**\n\n"
                          "Please type /init in the 1:1 room to authorize the app.",
                     markdown=True)
 
     def help(self):
         self.spark.link.post_bot_message(
             email=self.spark.person_object,
-            text="**Spark Army Knife (author: Greger Wedel)**\n\n"
+            text="**Cisco Webex Teams Army Knife (author: Greger Wedel)**\n\n"
                  "Help message for commands that only work in the bot 1:1 room.\n\n"
                  "**App Management**\n\n"
                  "- Use `/init` to authorize the app so that all commands work.\n\n"
-                 "- Use `/delete DELETENOW` to delete your Spark Army Knife account, this room, and "
+                 "- Use `/delete DELETENOW` to delete your Cisco Webex Teams Army Knife account, this room, and "
                  "all data associated with this account.\n\n"
-                 "- Use `/disable` to temporarily disable the Spark Army Knife account.\n\n"
-                 "- Use `/enable` to enable the Spark Army Knife account.\n\n"
+                 "- Use `/disable` to temporarily disable the Cisco Webex Teams Army Knife account.\n\n"
+                 "- Use `/enable` to enable the Cisco Webex Teams Army Knife account.\n\n"
                  "- Use `/support <message>` to send a message to support.\n\n"
-                 "- Use `/me` to get info about your Spark Army Knife account.\n\n"
+                 "- Use `/me` to get info about your Cisco Webex Teams Army Knife account.\n\n"
                  "- Use `/recommend <email> <message>` to send a message to another user and recommend "
-                 "Spark Army Knife.\n\n"
+                 "Cisco Webex Teams Army Knife.\n\n"
                  "- Use `/nomentionalert` to turn off 1:1 bot room alerts on mentions.\n\n"
                  "- Use `/mentionalert` to turn on (default) 1:1 bot room alerts on mentions.\n\n"
                  "- Use `/noroomalert` to turn off 1:1 bot room alerts on new rooms.\n\n"
                  "- Use `/roomalert` to turn on (default) 1:1 bot room alerts on new rooms.\n\n"
-                 "- Use `/noannouncements` to turn off announcements about Spark Army Knife.\n\n"
-                 "- Use `/announcements` to turn on (default) announcements about Spark Army Knife.\n\n"
+                 "- Use `/noannouncements` to turn off announcements about Cisco Webex Teams Army Knife.\n\n"
+                 "- Use `/announcements` to turn on (default) announcements about Cisco Webex Teams Army Knife.\n\n"
                  "**Todo/Followup List (aliases /followup and /fu)**\n\n"
                  "- Use `/todo Todo item...` to set a new todo item.\n\n"
                  "- Use `/todo` to list your todo items.\n\n"
@@ -291,7 +290,7 @@ class SparkBotHandler:
                  "- Use `/topofmind reminder on|off` to set or stop a daily reminder of your list at "
                  "this time.\n\n"
                  "**Box.com Integration**\n\n"
-                 "- Use `/box <rootfolder>` to add a Box account to Spark Army Knife. "
+                 "- Use `/box <rootfolder>` to add a Box account to Cisco Webex Teams Army Knife. "
                  "Optionally specify the folder where all Army Knife Box folders will be created.\n\n"
                  "- Use `/nobox` to disconnect and delete the Box service.\n\n"
                  "**Room management**\n\n"
@@ -300,10 +299,10 @@ class SparkBotHandler:
                  "member of.\n\n"
                  "- Use `/deletemember <email> <room-id,room-id...>` to delete a user from a room"
                  " or list of rooms "
-                 "(use Spark Id from e.g. /checkmember or /listroom).\n\n"
+                 "(use Cisco Webex Teams Id from e.g. /checkmember or /listroom).\n\n"
                  "- Use `/addmember <email> <room-id,room-id...>` to add a user to a room or"
                  " list of rooms "
-                 "(use Spark Id from e.g. /checkmember or /listroom).\n\n"
+                 "(use Cisco Webex Teams Id from e.g. /checkmember or /listroom).\n\n"
                  "- Use `/manageteam add|remove|list|delete <team_name> <email(s)>` where emails"
                  " are comma-separated. "
                  "The team can also be initialized from members in a room, see /team command"
@@ -322,7 +321,7 @@ class SparkBotHandler:
                  "- Use `/noautoreply` to turn off auto-reply.\n\n"
                  "- Use `/pins` to get a list of pinned messages and reminders set with /pin"
                  " command.\n\n"
-                 "**Advanced Spark Commands**\n\n"
+                 "**Advanced Cisco Webex Teams Commands**\n\n"
                  "- Use `/listwebhooks` to see all webhooks registered by integrations on your"
                  " account.\n\n"
                  "- Use `/deletewebhook <webhookid>` to delete a specific webhook from /listwebhooks"
@@ -812,7 +811,7 @@ class SparkBotHandler:
                 else:
                     self.spark.link.post_bot_message(
                         email=self.spark.person_object,
-                        text="Welcome to the new Spark Army Knife!\n\n"
+                        text="Welcome to the new Cisco Webex Teams Army Knife!\n\n"
                              "Not able to re-initialize properly from old Army Knife."
                              "Your account has probably timed out. Please do /init (again)",
                         markdown=True)
@@ -838,7 +837,8 @@ class SparkBotHandler:
             self.spark.me.delete_property('app_disabled')
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="The Spark Army Knife has now been enabled and will process messages and respond to commands.")
+                text="The Cisco Webex Teams Army Knife has now been enabled and will "
+                     "process messages and respond to commands.")
             return
         if not self.spark.me or not self.spark.me.id:
             self.spark.link.post_bot_message(
@@ -855,7 +855,8 @@ class SparkBotHandler:
             self.spark.me.set_property('app_disabled', 'true')
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="The Spark Army Knife has now been disabled and will not respond or process commands until you do "
+                text="The Cisco Webex Teams Army Knife has now been disabled and will"
+                     " not respond or process commands until you do "
                      "/enable. \n\n/enable, /help, and /init are the only commands that still work.")
             return
         elif self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
@@ -872,18 +873,19 @@ class SparkBotHandler:
                 firehose = "<none>"
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="**Your Spark Army Knife Account**\n\n----\n\n" +
+                text="**Your Cisco Webex Teams Army Knife Account**\n\n----\n\n" +
                      "**Registered email**: " + self.spark.me.creator + "\n\n" +
                      "**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
                      "**Webhook**: " + firehose +
-                     "\n\nIf your Army Knife is fully functioning, you will also get some information about your Spark "
+                     "\n\nIf your Army Knife is fully functioning, you will also get some "
+                     "information about your Cisco Webex Teams "
                      "account. If not, please do /init.",
                 markdown=True)
             if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == "full":
                 props = self.spark.me.get_properties()
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="**Your Spark Army Knife Account Data**\n\n----\n\n" +
+                    text="**Your Cisco Webex Teams Army Knife Account Data**\n\n----\n\n" +
                          json.dumps(props, sort_keys=True, indent=4),
                     markdown=True)
         elif self.spark.cmd == '/delete':
@@ -917,12 +919,12 @@ class SparkBotHandler:
                       len(self.spark.msg_list_wcap[1]) + 2:]
             self.spark.link.post_bot_message(
                 email=self.spark.msg_list[1],
-                text=message + "\n\n**This bot, Spark Army Knife, was recommended to you by " +
+                text=message + "\n\n**This bot, Cisco Webex Teams Army Knife, was recommended to you by " +
                 self.spark.person_object + "**\n\nType /init to get started!",
                 markdown=True)
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text=self.spark.msg_list[1] + " was just invited to use Spark Army Knife!",
+                text=self.spark.msg_list[1] + " was just invited to use Cisco Webex Teams Army Knife!",
                 markdown=True)
             self.spark.link.post_admin_message(
                 text=self.spark.msg_list[1] + " was just recommended Army Knife by " +
@@ -964,9 +966,9 @@ class SparkBotHandler:
             self.spark.me.set_property('no_announcements', 'true')
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="You will no longer get Spark Army Knife announcements.")
+                text="You will no longer get Cisco Webex Teams Army Knife announcements.")
         elif self.spark.cmd == '/announcements':
             self.spark.me.delete_property('no_announcements')
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="You will now get Spark Army Knife announcements!")
+                text="You will now get Cisco Webex Teams Army Knife announcements!")

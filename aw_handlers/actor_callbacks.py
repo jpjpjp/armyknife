@@ -13,7 +13,8 @@ class ActorCallbacks(webapp2.RequestHandler):
             params=self.request.params,
             body=self.request.body,
             headers=self.request.headers)
-        self.handler = callbacks.CallbacksHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWSpark())
+        self.handler = callbacks.CallbacksHandler(self.obj, self.app.registry.get('config'),
+                                                  on_aw=on_aw.OnAWWebexTeams())
 
     def get(self, actor_id, name):
         self.init()

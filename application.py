@@ -2,7 +2,7 @@ import webapp2
 import os
 import logging
 # import pydevd
-from jinja2 import Environment, PackageLoader, select_autoescape
+from jinja2 import Environment, PackageLoader
 
 from aw_handlers import actor_root, actor_trust, devtests, actor_subscription, actor_callbacks, actor_resources
 from aw_handlers import callback_oauth, actor_oauth
@@ -71,7 +71,7 @@ def set_config():
             fqdn=myurl,
             proto=proto,
             aw_type=aw_type,
-            desc="Spark actor: ",
+            desc="Cisco Webex Teams actor: ",
             version="2.0",
             devtest=True,
             actors=actors,

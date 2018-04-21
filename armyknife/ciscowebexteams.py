@@ -3,7 +3,7 @@ from actingweb import auth as botauth
 
 
 # This class relies on an actingweb oauth object to use for sending oauth data requests
-class CiscoSpark:
+class CiscoWebexTeams:
 
     def __init__(self, auth, actor_id, config):
         self.actor_id = actor_id
@@ -191,7 +191,7 @@ class CiscoSpark:
         if self.auth.oauth.last_response_code == 404:
             refresh = self.auth.oauth.oauth_refresh_token(refresh_token=self.auth.refresh_token)
             if not refresh:
-                logging.warn('Tried token refresh based on 404 from Spark, but failed')
+                logging.warn('Tried token refresh based on 404 from Cisco Webex Teams, but failed')
             else:
                 ret = self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
         return ret

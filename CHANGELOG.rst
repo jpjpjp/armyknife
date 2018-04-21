@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+Apr 21, 2018
+------------
+- Rebranded from Spark to Cisco Webex Teams
+- Improved visuals on welcome page
+- Added disabling of notifications when app is in /disable
+
 Feb 7, 2018
 ------------
 - Add /team link team_name to link team_name to the always current members of the room
@@ -16,7 +22,7 @@ Jan 16, 2018
 ------------
 - Full update to support new actingweb 2.3.0 API
 - Many smaller tweaks to texts and responses to improve user experience
-- Renaming /myurl to /me and update with more info, both from Army Knife account and from Spark account
+- Renaming /myurl to /me and update with more info, both from Army Knife account and from Cisco Webex Teams account
 - Automatically print out new top of mind list after a change
 - Cleaned up messaging to always use bot as sender unless there is a need to send a message into a non-bot room
 - Added a series of tests to as early as possible drop messages that should not be processed
