@@ -2,34 +2,35 @@ import json
 import logging
 import hmac
 import hashlib
+import datetime
 from actingweb import actor
-from . import ciscospark
+from . import ciscowebexteams
 from . import armyknife
 
 
-class SparkRequest:
-    """ Keeper of data from a request from Spark (bot or webhook)
+class WebexTeamsRequest:
+    """ Keeper of data from a request from Cisco Webex Teams (bot or webhook)
 
         For use outside the object:
         ------
          auth: the actingweb auth object
          actor_id: the current actor id
-         actor_spark_id: the Spark id of the actor
-         actor_data: Personal info on the Spark user
-         object_id: Spark id of the object that this request is about
+         actor_spark_id: the Cisco Webex Teams id of the actor
+         actor_data: Personal info on the Cisco Webex Teams user
+         object_id: Cisco Webex Teams id of the object that this request is about
          room_id: Id of the current room
          is_actor_user: is the actor a valid user (True after successful re_init)
-         person_id: the Spark id of the person acting in this message
+         person_id: the Cisco Webex Teams id of the person acting in this message
          is_actor_bot: is the bot the actor/person here (True if email of person_id is the bot email)
          person_object: the email of the person being acted upon (or None)
          is_bot_object: is the person acted upon the bot?
-         person_data: If enriched, the Spark data for this person
+         person_data: If enriched, the Cisco Webex Teams data for this person
          room_type: The type of room ("direct", "group")
-         room_data: If enriched, the Spark data of the room
-         msg_data: If enriched, the Spark data of the message
+         room_data: If enriched, the Cisco Webex Teams data of the room
+         msg_data: If enriched, the Cisco Webex Teams data of the message
          me: The actor object if an actor was found and associated with the acting person
          mentioned: True if this message mentioned the user
-         link: for communicating with Cisco Spark on behalf of this actor
+         link: for communicating with Cisco Webex Teams on behalf of this actor
          store: for storing data on this actor
          data: the "data" dict from the message received
          body: dict of the entire body (including "data")
@@ -54,7 +55,7 @@ class SparkRequest:
         else:
             self.actor_id = None
         self.actor_spark_id = None
-        self.link = ciscospark.CiscoSpark(auth=self.auth, actor_id=self.actor_id, config=self.config)
+        self.link = ciscowebexteams.CiscoWebexTeams(auth=self.auth, actor_id=self.actor_id, config=self.config)
         self.store = armyknife.ArmyKnife(actor_id=self.actor_id, config=self.config)
         self.data = None
         self.person_id = None
@@ -80,7 +81,7 @@ class SparkRequest:
         self.__rawbody = body.decode('utf-8', 'ignore')
         try:
             self.body = json.loads(self.__rawbody)
-            logging.debug('Received Spark webhook: ' + self.__rawbody)
+            logging.debug('Received Cisco Webex Teams webhook: ' + self.__rawbody)
             self.data = self.body['data']
             self.person_id = self.body['actorId']
         except (TypeError, KeyError, ValueError):
@@ -125,7 +126,7 @@ class SparkRequest:
         elif actor_id:
             self.actor_id = actor_id
         self.is_actor_user = True
-        self.link = ciscospark.CiscoSpark(auth=self.auth, actor_id=self.actor_id, config=self.config)
+        self.link = ciscowebexteams.CiscoWebexTeams(auth=self.auth, actor_id=self.actor_id, config=self.config)
         self.store = armyknife.ArmyKnife(actor_id=self.actor_id, config=self.config)
         return True
 
@@ -163,24 +164,25 @@ class SparkRequest:
             logging.debug("Got firehose without signature...")
 
     def enrich_data(self, what=None):
-        """ Retrieve data from Spark. This operation has a cost of roundtrip to Spark platform."""
+        """ Retrieve data from Cisco Webex Teams. This operation has a cost of
+        roundtrip to Cisco Webex Teams platform."""
         if what == 'me' and not self.actor_data:
             self.actor_data = self.link.get_me()
             if self.me and not self.actor_data or 'displayName' not in self.actor_data:
                 self.me.set_property('service_status', 'invalid')
                 last_err = self.link.last_response()
-                logging.error("Was not able to retrieve personal (me) data to enrich from Spark. Code(" + str(
-                        last_err['code']) +
-                    ") - " + last_err['message'])
+                logging.error("Was not able to retrieve personal (me) data to enrich "
+                              "from Cisco Webex Teams. Code(" + str(last_err['code']) +
+                              ") - " + last_err['message'])
                 return False
             if self.actor_data:
-                logging.debug("Enriched with Spark me data: " + str(self.actor_data))
+                logging.debug("Enriched with Cisco Webex Teams me data: " + str(self.actor_data))
         if what == 'person' and not self.person_data and self.person_id:
             self.person_data = self.link.get_person(self.person_id)
             if self.me and not self.person_data:
                 self.me.set_property('service_status', 'invalid')
                 last_err = self.link.last_response()
-                logging.error("Was not able to retrieve person data to enrich from Spark. Code(" + str(
+                logging.error("Was not able to retrieve person data to enrich from Cisco Webex Teams. Code(" + str(
                         last_err['code']) +
                     ") - " + last_err['message'])
                 return False
@@ -197,7 +199,7 @@ class SparkRequest:
                 self.me.set_property('service_status', 'invalid')
                 self.room_type = ''
                 last_err = self.link.last_response()
-                logging.error("Was not able to retrieve room data to enrich from Spark. Code(" + str(
+                logging.error("Was not able to retrieve room data to enrich from Cisco Webex Teams. Code(" + str(
                         last_err['code']) +
                     ") - " + last_err['message'])
                 return False
@@ -210,9 +212,23 @@ class SparkRequest:
             if self.me and (not self.msg_data or 'text' not in self.msg_data):
                 self.me.set_property('service_status', 'invalid')
                 last_err = self.link.last_response()
-                logging.error("Was not able to retrieve message data to enrich from Spark. Code(" + str(
+                logging.error("Was not able to retrieve message data to enrich from Cisco Webex Teams. Code(" + str(
                         last_err['code']) +
                     ") - " + last_err['message'])
+                if last_err['code'] == 400:
+                    now = datetime.datetime.utcnow()
+                    token_invalid = self.me.get_property('token_invalid').value
+                    if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
+                        self.me.set_property('token_invalid', now.strftime("%Y%m%d"))
+                        self.link.post_bot_message(
+                            email=self.me.creator,
+                            text="Your Cisco Webex Teams Army Knife account has no longer access. Please type "
+                                 "/init in this room to re-authorize the account.")
+                        self.link.post_bot_message(
+                            email=self.me.creator,
+                            text="If you repeatedly get this error message, do /delete DELETENOW "
+                                 "before a new /init. This will reset your account (note: all settings as well).")
+                        logging.info("User (" + self.me.creator + ") has invalid refresh token and got notified.")
                 return False
             if self.msg_data and 'personEmail' in self.msg_data:
                 logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail']))

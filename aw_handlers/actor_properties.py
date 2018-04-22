@@ -50,4 +50,3 @@ class ActorProperties(webapp2.RequestHandler):
         self.response.set_status(self.obj.response.status_code, self.obj.response.status_message)
         self.response.headers = self.obj.response.headers
         self.response.write(self.obj.response.body)
-

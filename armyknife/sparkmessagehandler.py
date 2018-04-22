@@ -4,17 +4,17 @@ import logging
 import re
 import base64
 import hashlib
-from . import ciscospark
+from . import ciscowebexteams
 from . import armyknife
 from actingweb import actor
 from actingweb import auth
 from actingweb import aw_proxy
 
 
-class SparkMessageHandler:
+class WebexTeamsMessageHandler:
     """ Class with all methods to handle messages that are associated directly with a user through OAuth
 
-    This is called a Spark integration and is mostly handled through registering a webhook callback on the
+    This is called a Cisco Webex Teams integration and is mostly handled through registering a webhook callback on the
     event types that the integration should receive. Here it is called a firehose. """
 
     def __init__(self, spark=None, webobj=None):
@@ -102,9 +102,14 @@ class SparkMessageHandler:
         for m in due:
             pin_owner = actor.Actor(actor_id=m["actor_id"], config=self.spark.config)
             per_user_auth = auth.Auth(actor_id=m["actor_id"], config=self.spark.config)
-            per_user_spark = ciscospark.CiscoSpark(auth=per_user_auth, actor_id=m["actor_id"], config=self.spark.config)
-            per_user_store = armyknife.ArmyKnife(actor_id=m["actor_id"], config=self.spark.config)
+            per_user_spark = ciscowebexteams.CiscoWebexTeams(auth=per_user_auth, actor_id=m["actor_id"],
+                                                             config=self.spark.config)
             email_owner = pin_owner.get_property(name='email').value
+            app_disabled = pin_owner.get_property('app_disabled').value
+            if app_disabled and app_disabled.lower() == 'true':
+                logging.debug("Account is disabled: " + email_owner)
+                continue
+            per_user_store = armyknife.ArmyKnife(actor_id=m["actor_id"], config=self.spark.config)
             if len(m["comment"]) == 0:
                 m["comment"] = "ARMY KNIFE REMINDER"
             # handle top of mind reminders first, marked with a special comment
@@ -211,7 +216,7 @@ class SparkMessageHandler:
                 self.spark.me.set_property('token_invalid', now.strftime("%Y%m%d"))
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="Your Spark Army Knife account has no longer access. Please type "
+                    text="Your Cisco Webex Teams Army Knife account has no longer access. Please type "
                          "/init in this room to re-authorize the account.")
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
@@ -236,6 +241,10 @@ class SparkMessageHandler:
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
             reply_msg = self.get_autoreply_msg()
             if not reply_msg:
+                return
+            app_disabled = self.spark.me.get_property('app_disabled').value
+            if app_disabled and app_disabled.lower() == 'true':
+                logging.debug("Account is disabled: " + self.spark.me.creator)
                 return
             self.spark.enrich_data('msg')
             if not self.spark.msg_data:
@@ -272,6 +281,10 @@ class SparkMessageHandler:
             if not self.spark.enrich_data('msg'):
                 return
             if not self.spark.enrich_data('room'):
+                return
+            app_disabled = self.spark.me.get_property('app_disabled').value
+            if app_disabled and app_disabled.lower() == 'true':
+                logging.debug("Account is disabled: " + self.spark.me.creator)
                 return
             if 'title' in self.spark.room_data and 'text' in self.spark.msg_data:
                 no_alert = self.spark.me.get_property('no_mentions').value
@@ -336,8 +349,8 @@ class SparkMessageHandler:
                 if not subscriber.id:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
-                        text="Failed in looking up your Spark Army Knife account. Please type /init here"
-                             " and authorize Spark Army Knife.")
+                        text="Failed in looking up your Cisco Webex Teams Army Knife account. Please type /init here"
+                             " and authorize Cisco Webex Teams Army Knife.")
                     return
                 peerid = self.spark.me.id
                 logging.debug("Looking for existing peer trust:(" + str(peerid) + ")")
@@ -391,7 +404,7 @@ class SparkMessageHandler:
                 if not subscriber.id:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
-                        text="Failed in looking up your Spark Army Knife account.")
+                        text="Failed in looking up your Cisco Webex Teams Army Knife account.")
                     return
                 # My subscriptions
                 subs = subscriber.get_subscriptions(
@@ -688,15 +701,15 @@ class SparkMessageHandler:
             if not me_data:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="Not able to retrieve data from Spark, you may need to do /init.",
+                    text="Not able to retrieve data from Cisco Webex Teams, you may need to do /init.",
                     markdown=True)
             else:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="**Your Spark Account**\n\n----\n\n" +
-                         "**Spark nickname**: " + me_data['nickName'] + "\n\n"
-                         "**Spark id**: " + me_data['id'] + "\n\n"
-                         "**Spark avatar**: " + (me_data['avatar'] or '') + "\n\n",
+                    text="**Your Cisco Webex Teams Account**\n\n----\n\n" +
+                         "**Cisco Webex Teams nickname**: " + me_data['nickName'] + "\n\n"
+                         "**Cisco Webex Teams id**: " + me_data['id'] + "\n\n"
+                         "**Cisco Webex Teams avatar**: " + (me_data['avatar'] or '') + "\n\n",
                     markdown=True)
         elif self.spark.cmd == '/listwebhooks':
             self.spark.link.post_bot_message(
@@ -963,7 +976,7 @@ class SparkMessageHandler:
             else:
                 box_root = self.spark.me.get_property('boxRoot').value
                 if not box_root:
-                    box_root = 'SparkRoomFolders'
+                    box_root = 'WebexTeamsRoomFolders'
             self.spark.me.set_property('boxRoot', box_root)
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
@@ -1402,7 +1415,7 @@ class SparkMessageHandler:
             return
         self.spark.store.process_message(self.spark.data)
         if self.spark.person_id != self.spark.actor_spark_id:
-            # We only execute commands in messages from the Spark user attached
+            # We only execute commands in messages from the Cisco Webex Teams user attached
             # to this ArmyKnife actor (not to).
             return
         if self.spark.cmd[0:1] != '/':

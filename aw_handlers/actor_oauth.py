@@ -20,7 +20,7 @@ class ActorOauth(webapp2.RequestHandler):
             body=self.request.body,
             headers=self.request.headers,
             cookies=cookies)
-        self.handler = oauth.OauthHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWSpark())
+        self.handler = oauth.OauthHandler(self.obj, self.app.registry.get('config'), on_aw=on_aw.OnAWWebexTeams())
 
     def get(self, actor_id, path):
         self.init()

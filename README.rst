@@ -4,8 +4,8 @@ Getting Started
 
 This application is a full ActingWeb app that uses the python library actingweb.
 
-It implements both a bot and an integration for Cisco Spark. This is the code running the official
-Spark Army Knife.
+It implements both a bot and an integration for Cisco Webex Teams. This is the code running the official
+Cisco Webex Teams Army Knife.
 
 Running locally
 ---------------

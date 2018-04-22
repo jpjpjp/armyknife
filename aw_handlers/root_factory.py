@@ -38,4 +38,3 @@ class RootFactory(webapp2.RequestHandler):
             self.response.write(self.obj.response.body)
         if self.obj.response.redirect:
             self.redirect(self.obj.response.redirect)
-
