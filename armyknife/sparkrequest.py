@@ -214,6 +214,19 @@ class WebexTeamsRequest:
                 logging.error("Was not able to retrieve message data to enrich from Cisco Webex Teams. Code(" + str(
                         last_err['code']) +
                     ") - " + last_err['message'])
+                if last_err['code'] == 400:
+                    now = datetime.datetime.utcnow()
+                    if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
+                        self.me.set_property('token_invalid', now.strftime("%Y%m%d"))
+                        self.link.post_bot_message(
+                            email=self.me.creator,
+                            text="Your Cisco Webex Teams Army Knife account has no longer access. Please type "
+                                 "/init in this room to re-authorize the account.")
+                        self.link.post_bot_message(
+                            email=self.me.creator,
+                            text="If you repeatedly get this error message, do /delete DELETENOW "
+                                 "before a new /init. This will reset your account (note: all settings as well).")
+                        logging.info("User (" + self.me.creator + ") has invalid refresh token and got notified.")
                 return False
             if self.msg_data and 'personEmail' in self.msg_data:
                 logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail']))

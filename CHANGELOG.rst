@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+Apr 22, 2018
+------------
+- Added notification invalid token in retrieval of message to catch apparently valid tokens that are not
+
 Apr 21, 2018
 ------------
 - Rebranded from Spark to Cisco Webex Teams
