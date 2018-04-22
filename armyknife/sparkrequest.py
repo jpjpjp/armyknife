@@ -2,6 +2,7 @@ import json
 import logging
 import hmac
 import hashlib
+import datetime
 from actingweb import actor
 from . import ciscowebexteams
 from . import armyknife
@@ -216,6 +217,7 @@ class WebexTeamsRequest:
                     ") - " + last_err['message'])
                 if last_err['code'] == 400:
                     now = datetime.datetime.utcnow()
+                    token_invalid = self.me.get_property('token_invalid').value
                     if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
                         self.me.set_property('token_invalid', now.strftime("%Y%m%d"))
                         self.link.post_bot_message(
