@@ -216,7 +216,7 @@ class WebexTeamsMessageHandler:
                 self.spark.me.set_property('token_invalid', now.strftime("%Y%m%d"))
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="Your Cisco Webex Teams Army Knife account has no longer access. Please type "
+                    text="Your Army Knife account has no longer access. Please type "
                          "/init in this room to re-authorize the account.")
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
@@ -349,8 +349,8 @@ class WebexTeamsMessageHandler:
                 if not subscriber.id:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
-                        text="Failed in looking up your Cisco Webex Teams Army Knife account. Please type /init here"
-                             " and authorize Cisco Webex Teams Army Knife.")
+                        text="Failed in looking up your Army Knife account. Please type /init here"
+                             " and authorize Army Knife.")
                     return
                 peerid = self.spark.me.id
                 logging.debug("Looking for existing peer trust:(" + str(peerid) + ")")
@@ -404,7 +404,7 @@ class WebexTeamsMessageHandler:
                 if not subscriber.id:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
-                        text="Failed in looking up your Cisco Webex Teams Army Knife account.")
+                        text="Failed in looking up your Army Knife account.")
                     return
                 # My subscriptions
                 subs = subscriber.get_subscriptions(

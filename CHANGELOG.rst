@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+Apr 29, 2018
+------------
+- Re-branded from Cisco Webex Teams to just Army Knife
+
 Apr 22, 2018
 ------------
 - Added notification invalid token in retrieval of message to catch apparently valid tokens that are not
