@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+May 5, 2018
+------------
+- Fix bug in /todo and /topofmind where items with " would make the list impossible to load (json error)
+
 Apr 29, 2018
 ------------
 - Re-branded from Cisco Webex Teams to just Army Knife
