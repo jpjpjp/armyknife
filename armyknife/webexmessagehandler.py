@@ -1121,7 +1121,7 @@ class WebexTeamsMessageHandler:
                 text="Added list item **" + str(index + 1) + "** with text `" + toplist[index] + "`",
                 markdown=True)
             todo['list'] = toplist
-            out = json.dumps(todo, sort_keys=True)
+            out = json.dumps(todo, sort_keys=True, ensure_ascii=False)
             self.spark.me.set_property('todo', out)
             now = datetime.datetime.now()
             self.spark.me.set_property('todo_modified', now.strftime('%Y-%m-%d %H:%M'))

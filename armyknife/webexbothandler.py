@@ -503,7 +503,7 @@ class WebexTeamsBotHandler:
             topofmind['title'] = self.spark.msg_data['text'][
                                  len(self.spark.msg_list_wcap[0]) +
                                  len(self.spark.msg_list_wcap[1]) + 2:]
-            out = json.dumps(topofmind)
+            out = json.dumps(topofmind, ensure_ascii=False)
             self.spark.me.set_property('topofmind', out)
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
@@ -586,7 +586,7 @@ class WebexTeamsBotHandler:
                     text="Added list item **" + str(index) + "** with text `" + toplist[index] + "`",
                     markdown=True)
             topofmind['list'] = toplist
-            out = json.dumps(topofmind, sort_keys=True)
+            out = json.dumps(topofmind, sort_keys=True, ensure_ascii=False)
             self.spark.me.set_property('topofmind', out)
             self.spark.me.register_diffs(target='properties', subtarget='topofmind', blob=out)
             # List out the updated list
@@ -720,7 +720,7 @@ class WebexTeamsBotHandler:
                 text="Added list item **" + str(index+1) + "** with text `" + toplist[index] + "`",
                 markdown=True)
         todo['list'] = toplist
-        out = json.dumps(todo, sort_keys=True)
+        out = json.dumps(todo, sort_keys=True, ensure_ascii=False)
         self.spark.me.set_property('todo', out)
         # List out the updated list
         out = "**" + todo['title'] + "**"
