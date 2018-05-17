@@ -300,6 +300,7 @@ class WebexTeamsBotHandler:
                  "- Use `/deletemember <email> <room-id,room-id...>` to delete a user from a room"
                  " or list of rooms "
                  "(use Cisco Webex Teams Id from e.g. /checkmember or /listroom).\n\n"
+                 "- Use `/deletemember <email> FORCE count` to delete a user from ALL shared rooms.\n\n"
                  "- Use `/addmember <email> <room-id,room-id...>` to add a user to a room or"
                  " list of rooms "
                  "(use Cisco Webex Teams Id from e.g. /checkmember or /listroom).\n\n"

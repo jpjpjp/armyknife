@@ -139,7 +139,7 @@ class WebexTeamsRequest:
         msghash = hmac.new(key=self.config.bot['secret'], msg=raw_body, digestmod=hashlib.sha1)
         if msghash.hexdigest() != sign:
             logging.warn('Signature does not match on bot message!')
-            self.link.post_admin_message(text='SECURITY ALERT: Got bot message with non-matching signature')
+            #self.link.post_admin_message(text='SECURITY ALERT: Got bot message with non-matching signature')
             return False
         logging.debug('Got signed and verified bot message')
         return True

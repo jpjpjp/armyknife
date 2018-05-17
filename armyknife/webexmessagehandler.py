@@ -21,7 +21,7 @@ class WebexTeamsMessageHandler:
         self.spark = spark
         self.webobj = webobj
 
-    def check_member(self, target):
+    def check_member(self, target, quiet=False):
         out = ""
         next_rooms = self.spark.link.get_rooms()
         rooms = []
@@ -29,17 +29,19 @@ class WebexTeamsMessageHandler:
             rooms.extend(next_rooms['items'])
             next_rooms = self.spark.link.get_rooms(get_next=True)
         if len(rooms) > 0:
-            out += "**You are member of " + str(len(rooms)) + " group rooms**\n\n"
+            out += "You are member of " + str(len(rooms)) + " group rooms\n\n"
             out += "Searching for rooms with " + target + " as a member (this may take a long time)...\n\n"
         else:
             out += "**No rooms found**"
-        self.spark.link.post_bot_message(
-            email=self.spark.me.creator,
-            text=out,
-            markdown=True)
+        if not quiet:
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text=out,
+                markdown=True)
         out = ""
         nr_of_rooms = 0
         found_in_rooms = 0
+        list_of_rooms = []
         for r in rooms:
             next_members = self.spark.link.get_memberships(spark_id=str(r['id']))
             nr_of_rooms += 1
@@ -53,6 +55,7 @@ class WebexTeamsMessageHandler:
                             ('@' not in target and 'personDisplayName' in m and target in m[
                                 'personDisplayName'].lower()):
                         found_in_rooms += 1
+                        list_of_rooms.append(r['id'])
                         room = self.spark.link.get_room(spark_id=str(r['id']))
                         if room and 'title' in room:
                             out += room['title'] + " (" + r['id'] + ")"
@@ -65,15 +68,18 @@ class WebexTeamsMessageHandler:
                                 text=out)
                             out = ""
                         break
-        if len(out) > 0:
+        if len(out) > 0 and not quiet:
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text=out)
-        self.spark.link.post_bot_message(
-            email=self.spark.me.creator,
-            text="----\n\nSearched " + str(nr_of_rooms) + " rooms, and found " + target + " in " + str(found_in_rooms) +
-                 " rooms.",
-            markdown=True)
+        if not quiet:
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="----\n\nSearched " + str(nr_of_rooms) + " rooms, and found " + target + " in " +
+                     str(found_in_rooms) +
+                     " rooms.",
+                markdown=True)
+        return found_in_rooms, list_of_rooms
 
     def joinroom(self):
         uuid = self.webobj.request.get('id')
@@ -816,41 +822,64 @@ class WebexTeamsMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Usage: `/deletemember <email> <room-id>` to delete user with <email>"
-                         " from a room with <room-id>.",
+                         " from a room with <room-id>.\n\n"
+                         " or: `/deletemember <email> FORCE count` to delete user with <email>"
+                         " from ALL shared room where count=number of shared rooms (use /checkmember).",
                     markdown=True)
                 return
             target = self.spark.msg_list[1]
-            ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
-                                              len(self.spark.msg_list[1]) +
-                                              2:].replace(" ", "").split(',')
+            ids = []
+            if self.spark.msg_list_wcap[2] == "FORCE":
+                count = -1
+                try:
+                    target_count = int(self.spark.msg_list[3])
+                except TypeError:
+                    target_count = 0
+                if target_count > 0:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Checking number of memberships (please be patient)...",
+                        markdown=True)
+                    count, ids = self.check_member(target, quiet=True)
+                if count != target_count:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Count does not match number of rooms (" + str(count) + ").",
+                        markdown=True)
+                    return
+            else:
+                ids = self.spark.msg_data['text'][len(self.spark.msg_list[0]) +
+                                                  len(self.spark.msg_list[1]) +
+                                                  2:].replace(" ", "").split(',')
+            ok_out = ""
+            failed_out = ""
             for i in ids:
                 next_members = self.spark.link.get_memberships(spark_id=str(i))
                 members = []
                 while next_members and 'items' in next_members:
                     members.extend(next_members['items'])
                     next_members = self.spark.link.get_memberships(get_next=True)
-                found = False
                 for m in members:
-                    found = False
                     if m['personEmail'].lower() == target:
-                        found = True
                         res = self.spark.link.delete_member(spark_id=m['id'])
                         if res is not None:
-                            self.spark.link.post_bot_message(
-                                email=self.spark.me.creator,
-                                text="Deleted " + target + " from the room " + i,
-                                markdown=True)
+                            if len(ok_out) > 0:
+                                ok_out += ","
+                            ok_out += str(i)
                         else:
-                            self.spark.link.post_bot_message(
-                                email=self.spark.me.creator,
-                                text="Delete failed from the room " + i,
-                                markdown=True)
-                        break
-                if not found:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.me.creator,
-                        text=target + " was not found in room " + i,
-                        markdown=True)
+                            if len(failed_out) > 0:
+                                failed_out += ","
+                            failed_out += str(i)
+            if len(ok_out) > 0:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=target + " was deleted from (can be used in `/addmember` to add them back): " + ok_out,
+                    markdown=True)
+            if len(failed_out) > 0:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=target + " was NOT deleted from " + failed_out,
+                    markdown=True)
         elif self.spark.cmd == '/addmember':
             if len(self.spark.msg_list) < 3:
                 self.spark.link.post_bot_message(
