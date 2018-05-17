@@ -2,6 +2,18 @@
 CHANGELOG
 =========
 
+May 17, 2018
+------------
+- Add support for /deletemember <email> FORCE count to remove user from all shared rooms
+
+May 5, 2018
+------------
+- Fix bug in /todo and /topofmind where items with " would make the list impossible to load (json error)
+
+Apr 29, 2018
+------------
+- Re-branded from Cisco Webex Teams to just Army Knife
+
 Apr 22, 2018
 ------------
 - Added notification invalid token in retrieval of message to catch apparently valid tokens that are not

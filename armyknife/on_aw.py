@@ -2,16 +2,16 @@ import json
 import logging
 import hashlib
 from actingweb import on_aw
-from . import sparkrequest
-from . import sparkbothandler
-from . import sparkmessagehandler
+from . import webexrequest
+from . import webexbothandler
+from . import webexmessagehandler
 
 
 class OnAWWebexTeams(object, on_aw.OnAWBase):
 
     def delete_actor(self):
         """ Here we need to do additional cleanup when a user is deleted """
-        spark = sparkrequest.WebexTeamsRequest(
+        spark = webexrequest.WebexTeamsRequest(
             body=self.webobj.request.body,
             auth=self.auth,
             myself=self.myself,
@@ -51,7 +51,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
     def check_on_oauth_success(self, token=None):
         """ Before approving an OAuth request, we need to validate the identity """
 
-        spark = sparkrequest.WebexTeamsRequest(
+        spark = webexrequest.WebexTeamsRequest(
             body=self.webobj.request.body,
             auth=self.auth,
             myself=self.myself,
@@ -74,7 +74,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
                 spark.me.delete_property('oauth_refresh_token_expiry')
                 spark.link.post_bot_message(
                     email=me['emails'][0],
-                    text="**WARNING!!**\n\nAn attempt to create a new Cisco Webex Teams Army Knife account for " +
+                    text="**WARNING!!**\n\nAn attempt to create a new Army Knife account for " +
                          spark.me.creator +
                          " was done while you were logged into Cisco Webex Teams in your browser. Did you try with"
                          " the wrong email address?\n\n"
@@ -84,10 +84,10 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
                 spark.link.post_bot_message(
                     email=spark.me.creator,
                     text="**SECURITY WARNING**\n\n" + me['emails'][0] +
-                         "'s Cisco Webex Teams credentials were attempted used to create a new Cisco Webex Teams Army Knife"
+                         "'s Cisco Webex Teams credentials were attempted used to create a new Army Knife"
                          " account for you.\n\n"
                          "No action required, but somebody may have attempted to hijack your"
-                         " Cisco Webex Teams Army Knife account.",
+                         " Army Knife account.",
                     markdown=True)
                 if not spark.me.get_property('oauthId').value:
                     spark.me.delete()
@@ -112,8 +112,8 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
                 spark.link.post_bot_message(
                     email=spark.me.get_property('email').value,
                     text="**SECURITY WARNING**\n\n" + (me['emails'][0] or "Unknown") +
-                         " tried to log into your Cisco Webex Teams Army Knife account.\n\n"
-                         "For security reasons, your Cisco Webex Teams Army Knife account has been suspended.\n\n"
+                         " tried to log into your Army Knife account.\n\n"
+                         "For security reasons, your Army Knife account has been suspended.\n\n"
                          "If this happens repeatedly, please contact support@greger.io",
                     markdown=True)
                 return False
@@ -124,10 +124,10 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
 
         if not self.myself:
             return True
-        spark = sparkrequest.WebexTeamsRequest(body=self.webobj.request.body,
-                                          auth=self.auth,
-                                          myself=self.myself,
-                                          config=self.config)
+        spark = webexrequest.WebexTeamsRequest(body=self.webobj.request.body,
+                                               auth=self.auth,
+                                               myself=self.myself,
+                                               config=self.config)
         email = spark.me.get_property('email').value
         hook_id = spark.me.get_property('firehoseId').value
         spark.me.delete_property('token_invalid')
@@ -162,13 +162,13 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
             spark.link.post_admin_message(text='Failed to register firehose for new user: ' + email)
             spark.link.post_bot_message(
                 email=email,
-                text="Hi there! Welcome to the **Cisco Webex Teams Army Knife**! \n\n"
+                text="Hi there! Welcome to the **Army Knife**! \n\n"
                      "You have successfully authorized access.\n\nSend me commands starting with /. Like /help",
                 markdown=True)
             return True
         spark.link.post_bot_message(
             email=email,
-            text="Hi there! Welcome to the **Cisco Webex Teams Army Knife**! \n\n"
+            text="Hi there! Welcome to the **Army Knife**! \n\n"
                  "You have successfully authorized access.\n\nSend me commands starting with /. Like /help",
             markdown=True)
         return True
@@ -176,10 +176,10 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
     def bot_post(self, path):
         """Called on POSTs to /bot."""
         # Get a spark request object to do signature check
-        spark = sparkrequest.WebexTeamsRequest(body=self.webobj.request.body,
-                                          auth=self.auth,
-                                          myself=None,
-                                          config=self.config)
+        spark = webexrequest.WebexTeamsRequest(body=self.webobj.request.body,
+                                               auth=self.auth,
+                                               myself=None,
+                                               config=self.config)
         if not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
             return 404
         # Try to re-init from person_id in the message
@@ -199,7 +199,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
         #   2. memberships, created -> two messages, one for the bot and one for the user
         #   3. messages, created -> either from the bot or from the user depending on who initiated the request
         #
-        handler = sparkbothandler.WebexTeamsBotHandler(spark)
+        handler = webexbothandler.WebexTeamsBotHandler(spark)
         if spark.body['resource'] == 'rooms':
             if spark.body['event'] == 'created':
                 handler.rooms_created()
@@ -216,10 +216,10 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
         """ This method is called for regular web browser requests to the user's URL/something
 
         """
-        spark = sparkrequest.WebexTeamsRequest(body=self.webobj.request.body,
-                                          auth=self.auth,
-                                          myself=self.myself,
-                                          config=self.config)
+        spark = webexrequest.WebexTeamsRequest(body=self.webobj.request.body,
+                                               auth=self.auth,
+                                               myself=self.myself,
+                                               config=self.config)
         if name == 'joinroom':
             uuid = self.webobj.request.get('id')
             room = spark.store.load_room_by_uuid(uuid)
@@ -248,7 +248,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
             logging.debug("Got a firehose callback for an unknown user.")
             self.webobj.response.set_status(410, 'Gone')
             return True
-        spark = sparkrequest.WebexTeamsRequest(
+        spark = webexrequest.WebexTeamsRequest(
             body=self.webobj.request.body,
             auth=self.auth,
             myself=self.myself,
@@ -267,7 +267,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
         if name == 'room':
             self.webobj.response.set_status(404, 'Not found')
             return True
-        handler = sparkmessagehandler.WebexTeamsMessageHandler(spark, self.webobj)
+        handler = webexmessagehandler.WebexTeamsMessageHandler(spark, self.webobj)
         # non-json POSTs to be handled first
         if name == 'joinroom':
             return handler.joinroom()
@@ -314,7 +314,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
     def post_subscriptions(self, sub, peerid, data):
         """Customizible function to process incoming callbacks/subscriptions/ callback with json body,
             return True if processed, False if not."""
-        spark = sparkrequest.WebexTeamsRequest(
+        spark = webexrequest.WebexTeamsRequest(
             body=self.webobj.request.body,
             auth=self.auth,
             myself=self.myself,

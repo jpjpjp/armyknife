@@ -71,7 +71,7 @@ def set_config():
             fqdn=myurl,
             proto=proto,
             aw_type=aw_type,
-            desc="Cisco Webex Teams actor: ",
+            desc="Army Knife actor: ",
             version="2.0",
             devtest=True,
             actors=actors,
