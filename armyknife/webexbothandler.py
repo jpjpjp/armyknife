@@ -24,7 +24,7 @@ class WebexTeamsBotHandler:
         if not self.spark.is_actor_user:
             self.spark.link.post_message(
                 self.spark.room_id,
-                "**Welcome to Army Knife Army Knife, " + self.spark.person_object +
+                "**Welcome to the Army Knife, " + self.spark.person_object +
                 "!**\n\n Please authorize the app by clicking the following link: " +
                 url + "/www",
                 markdown=True)
@@ -44,7 +44,7 @@ class WebexTeamsBotHandler:
             if self.spark.room_type == 'group':
                 self.spark.link.post_bot_message(
                     spark_id=self.spark.room_id,
-                    text="**Welcome to Army Knife Army Knife!**\n\n To use, please create a 1:1 room with " +
+                    text="**Welcome to the Army Knife!**\n\n To use, please create a 1:1 room with " +
                          self.spark.config.bot['email'] +
                          ". If you don't get an answer, type /init in that room.",
                     markdown=True)
