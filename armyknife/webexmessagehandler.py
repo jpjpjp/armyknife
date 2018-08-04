@@ -241,7 +241,7 @@ class WebexTeamsMessageHandler:
             return None
         else:
             self.spark.me.set_property('autoreplyMsg-last', self.spark.person_object.lower())
-        return "Via armyknife@webex.bot auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
+        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
 
     def message_autoreply(self):
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
@@ -255,7 +255,8 @@ class WebexTeamsMessageHandler:
             self.spark.enrich_data('msg')
             if not self.spark.msg_data:
                 return
-            if "armyknife@webex.bot" in self.spark.msg_data['text']:
+            if "@webex.bot" in self.spark.msg_data['text'] or \
+                    "@sparkbot.io" in self.spark.msg_data['text']:
                 return
             self.spark.enrich_data('person')
             self.spark.link.post_message(
