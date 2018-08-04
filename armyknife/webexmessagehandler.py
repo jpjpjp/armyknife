@@ -241,7 +241,7 @@ class WebexTeamsMessageHandler:
             return None
         else:
             self.spark.me.set_property('autoreplyMsg-last', self.spark.person_object.lower())
-        return "Via armyknife@sparkbot.io auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
+        return "Via armyknife@webex.bot auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
 
     def message_autoreply(self):
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
@@ -255,7 +255,7 @@ class WebexTeamsMessageHandler:
             self.spark.enrich_data('msg')
             if not self.spark.msg_data:
                 return
-            if "armyknife@sparkbot.io" in self.spark.msg_data['text']:
+            if "armyknife@webex.bot" in self.spark.msg_data['text']:
                 return
             self.spark.enrich_data('person')
             self.spark.link.post_message(
@@ -451,7 +451,8 @@ class WebexTeamsMessageHandler:
 
     def message_actions(self):
         # Ignore all messages from sparkbots
-        if "@sparkbot.io" in self.spark.person_object.lower():
+        if "@sparkbot.io" in self.spark.person_object.lower() or \
+                "@webex.bot" in self.spark.person_object.lower():
             return
         app_disabled = self.spark.me.get_property('app_disabled').value
         if app_disabled and app_disabled.lower() == 'true':
