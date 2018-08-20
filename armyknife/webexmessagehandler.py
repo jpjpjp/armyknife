@@ -9,6 +9,7 @@ from . import armyknife
 from actingweb import actor
 from actingweb import auth
 from actingweb import aw_proxy
+from . import payments
 
 
 class WebexTeamsMessageHandler:
@@ -137,6 +138,7 @@ class WebexTeamsMessageHandler:
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                     out += "\n\n---\n\n"
                     for i, el in sorted(toplist.items()):
+                        i = str(i)
                         out = out + "**" + i + "**: " + el + "\n\n"
                     per_user_spark.post_bot_message(
                         email=email_owner,
@@ -241,7 +243,8 @@ class WebexTeamsMessageHandler:
             return None
         else:
             self.spark.me.set_property('autoreplyMsg-last', self.spark.person_object.lower())
-        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
+        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + \
+               self.spark.me.get_property('autoreplyMsg').value
 
     def message_autoreply(self):
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
@@ -1249,7 +1252,7 @@ class WebexTeamsMessageHandler:
                 logging.info("Not able to retrieve members for room in /listmembers")
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="Net able to retrieve members in room to list members.")
+                    text="Not able to retrieve members in room to list members.")
                 return
             memberlist = ""
             sep = ""
@@ -1458,6 +1461,17 @@ class WebexTeamsMessageHandler:
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
             self.spark.me.set_property('service_status', 'active')
+        # Global beta users bypass subscriptions and trials!
+        feature_toggles = self.spark.me.get_property('featureToggles').value
+        if not feature_toggles or 'beta' not in feature_toggles:
+            abort, msg = payments.check_subscriptions(self.spark.cmd, self.spark.store)
+            if msg:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=msg,
+                    markdown=True)
+            if abort:
+                return
         if self.spark.room_id == self.spark.chat_room_id:
             # Commands run in the 1:1 bot room that need OAuth rights on behalf
             # of the user to execute

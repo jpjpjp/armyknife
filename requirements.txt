@@ -8,5 +8,6 @@ urlfetch
 logging
 pytz
 requests
+stripe
 actingweb
 #pydevd
