@@ -48,6 +48,7 @@ class ActorWWW(webapp2.RequestHandler):
         elif path == 'getattachment':
             template = self.app.registry.get('template').get_template('spark-getattachment.html')
         if template:
+            template.globals['STATIC_PREFIX'] = '/static'
             self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         else:
             self.response.write(self.obj.response.body)
