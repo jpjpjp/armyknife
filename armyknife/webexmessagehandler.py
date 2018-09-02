@@ -1464,7 +1464,7 @@ class WebexTeamsMessageHandler:
         # Global beta users bypass subscriptions and trials!
         feature_toggles = self.spark.me.get_property('featureToggles').value
         if not feature_toggles or 'beta' not in feature_toggles:
-            abort, msg = payments.check_subscriptions(self.spark.cmd, self.spark.store)
+            abort, msg = payments.check_subscriptions(self.spark.cmd, self.spark.store, 'integration')
             if msg:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,

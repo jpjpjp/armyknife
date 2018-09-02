@@ -14,14 +14,18 @@ WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'whsec_OOAQaJWTXVZo4KkWB99aW
 
 TRIAL_LENGTH = 30  # Number of days in trial length
 
-PAID_FEATURES = [
+PAID_FEATURES_BOT = [
     '/autoreply',
+    '/noautoreply',
     '/todo',
     '/fu',
     '/followup'
     '/tom',
     '/topofmind',
-    '/done',
+    '/done'
+]
+
+PAID_FEATURES_INT = [
     '/makepublic',
     '/makeprivate',
     '/boxfolder',
@@ -34,13 +38,13 @@ PAID_FEATURES = [
 ]
 
 # For now, just make all paid features available as trial features
-TRIAL_FEATURES = PAID_FEATURES
+TRIAL_FEATURES = PAID_FEATURES_BOT + PAID_FEATURES_INT
 
 stripe.log = 'info'
 stripe.api_key = os.getenv('STRIPE_API_KEY', 'sk_test_IiAlGGLyqmEPPfqF4VY8Zn3w')
 
 
-def check_subscriptions(cmd, store):
+def check_subscriptions(cmd, store, context='integration'):
     # Check for trial and payment status
     perm_attrs = store.get_perm_attributes()
     trial = False
@@ -66,6 +70,11 @@ def check_subscriptions(cmd, store):
             msg = msg + "Your trial has expired!\n\n"
             msg = msg + get_subscribe_msg()
             abort = True
+    # Avoid that message is sent from both bot and integration
+    if context == 'integration' and cmd not in PAID_FEATURES_INT:
+        msg = ''
+    if context == 'bot' and cmd not in PAID_FEATURES_BOT:
+        msg = ''
     return abort, msg
 
 
@@ -89,7 +98,7 @@ def check_valid_subscription(sub):
 
 
 def check_subscription_commands(cmd):
-    return cmd in PAID_FEATURES
+    return cmd in PAID_FEATURES_INT or cmd in PAID_FEATURES_BOT
 
 
 def check_trial_commands(cmd):
