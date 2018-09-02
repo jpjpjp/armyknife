@@ -2,6 +2,7 @@ import json
 import datetime
 import logging
 from actingweb import actor
+from .payments import cancel_subscription, check_subscriptions
 
 
 class WebexTeamsBotHandler:
@@ -262,6 +263,8 @@ class WebexTeamsBotHandler:
                  "- Use `/init` to authorize the app so that all commands work.\n\n"
                  "- Use `/delete DELETENOW` to delete your Army Knife account, this room, and "
                  "all data associated with this account.\n\n"
+                 "- Use `/subscription` to get information on your subscription or to subscribe.\n\n"
+                 "- Use `/subscription cancel` to cancel an active subscription.\n\n"
                  "- Use `/disable` to temporarily disable the Army Knife account.\n\n"
                  "- Use `/enable` to enable the Army Knife account.\n\n"
                  "- Use `/support <message>` to send a message to support.\n\n"
@@ -736,6 +739,37 @@ class WebexTeamsBotHandler:
             text=out,
             markdown=True)
 
+    def subscription_command(self):
+        sub = self.spark.store.get_perm_attribute('subscription')
+        if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'cancel':
+            cancel_subscription(self.spark.me, self.spark.config)
+            return
+        if sub and 'data' in sub:
+            if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'dump':
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text=json.dumps(sub['data'], sort_keys=True, indent=4),
+                    markdown=True)
+                return
+            end = datetime.datetime.fromtimestamp(sub['data']['sub_end'])
+            now = datetime.datetime.utcnow()
+            if now < end and 'sub_id' in sub['data']:
+                out = 'Hurray! You have an active subscription.\n\nIt expires on ' + \
+                      end.strftime('%Y-%m-%d %H:%M') + ' (UTC).\n\n'
+            elif now < end:
+                out = 'Your subscription was cancelled.\n\nThe service expires on ' + \
+                      end.strftime('%Y-%m-%d %H:%M') + ' (UTC).\n\n'
+            else:
+                out = 'Your subscription expired on ' + end.strftime('%Y-%m-%d %H:%M') + ' (UTC).\n\n'
+            out = out + 'You can restart a subscription or update your card on this link: '
+        else:
+            out = "You don't have an active subscription.\n\nPlease subscribe on this link: "
+        out = out + self.spark.config.root + 'stripe?id=' + self.spark.me.id
+        self.spark.link.post_bot_message(
+            email=self.spark.person_object,
+            text=out,
+            markdown=True)
+
     def messages_created(self):
         if not self.spark.room_id:
             logging.error("Got a message-created event, but roomId was not set")
@@ -774,6 +808,9 @@ class WebexTeamsBotHandler:
                 text="The Army Knife has now been enabled and will "
                      "process messages and respond to commands.")
             return
+        elif self.spark.cmd == '/subscription':
+            self.subscription_command()
+            return
         if not self.spark.me or not self.spark.me.id:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
@@ -792,9 +829,6 @@ class WebexTeamsBotHandler:
                 text="The Army Knife has now been disabled and will"
                      " not respond or process commands until you do "
                      "/enable. \n\n/enable, /help, and /init are the only commands that still work.")
-            return
-        elif self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
-            self.tracker_commands()
             return
         elif self.spark.cmd == '/myself':
             self.spark.link.post_bot_message(
@@ -834,13 +868,6 @@ class WebexTeamsBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Your message has been sent to support.")
-        elif self.spark.cmd == '/topofmind' or self.spark.cmd == '/tom':
-            self.topofmind_commands()
-            return
-        elif self.spark.cmd == '/todo'or self.spark.cmd == '/followup' or self.spark.cmd == '/fu' or \
-                self.spark.cmd == '/done':
-            self.todo_commands()
-            return
         elif self.spark.cmd == '/recommend':
             if len(self.spark.msg_list_wcap) < 3:
                 self.spark.link.post_bot_message(
@@ -863,19 +890,6 @@ class WebexTeamsBotHandler:
             self.spark.link.post_admin_message(
                 text=self.spark.msg_list[1] + " was just recommended Army Knife by " +
                 self.spark.person_object)
-        elif self.spark.cmd == '/autoreply':
-            reply_msg = self.spark.msg_data['text'][len(self.spark.msg_list[0]):]
-            self.spark.me.set_property('autoreplyMsg', reply_msg)
-            self.spark.link.post_bot_message(
-                email=self.spark.person_object,
-                text="Auto-reply message set to: " +
-                     reply_msg + "\n\n@mentions and messages in direct rooms will now return your message.",
-                markdown=True)
-        elif self.spark.cmd == '/noautoreply':
-            self.spark.me.delete_property('autoreplyMsg')
-            self.spark.link.post_bot_message(
-                email=self.spark.person_object,
-                text="Auto-reply message off.")
         elif self.spark.cmd == '/nomentionalert':
             self.spark.me.set_property('no_mentions', 'true')
             self.spark.link.post_bot_message(
@@ -906,3 +920,37 @@ class WebexTeamsBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="You will now get Army Knife announcements!")
+        # Global beta users bypass subscriptions and trials!
+        feature_toggles = self.spark.me.get_property('featureToggles').value
+        if not feature_toggles or 'beta' not in feature_toggles:
+            abort, msg = check_subscriptions(self.spark.cmd, self.spark.store)
+            if msg:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=msg,
+                    markdown=True)
+            if abort:
+                return
+        if self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
+            self.tracker_commands()
+            return
+        elif self.spark.cmd == '/topofmind' or self.spark.cmd == '/tom':
+            self.topofmind_commands()
+            return
+        elif self.spark.cmd == '/todo'or self.spark.cmd == '/followup' or self.spark.cmd == '/fu' or \
+                self.spark.cmd == '/done':
+            self.todo_commands()
+            return
+        elif self.spark.cmd == '/autoreply':
+            reply_msg = self.spark.msg_data['text'][len(self.spark.msg_list[0]):]
+            self.spark.me.set_property('autoreplyMsg', reply_msg)
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Auto-reply message set to: " +
+                     reply_msg + "\n\n@mentions and messages in direct rooms will now return your message.",
+                markdown=True)
+        elif self.spark.cmd == '/noautoreply':
+            self.spark.me.delete_property('autoreplyMsg')
+            self.spark.link.post_bot_message(
+                email=self.spark.person_object,
+                text="Auto-reply message off.")

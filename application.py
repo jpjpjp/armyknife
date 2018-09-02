@@ -7,7 +7,9 @@ from jinja2 import Environment, PackageLoader
 from aw_handlers import actor_root, actor_trust, devtests, actor_subscription, actor_callbacks, actor_resources
 from aw_handlers import callback_oauth, actor_oauth
 from aw_handlers import root_factory, actor_www, actor_properties, actor_meta, bots
-import stripe_handler, static
+import stripe_handler
+import static
+import stripe_hook_handler
 
 app = webapp2.WSGIApplication([
     ('/', root_factory.RootFactory),
@@ -15,6 +17,7 @@ app = webapp2.WSGIApplication([
     webapp2.Route(r'/bot<:/?><path:(.*)>', bots.Bots),
     webapp2.Route(r'/oauth', callback_oauth.CallbackOauths),
     webapp2.Route(r'/stripe', stripe_handler.StripeHandler),
+    webapp2.Route(r'/stripe-hook', stripe_hook_handler.StripeHookHandler),
     webapp2.Route(r'/<actor_id>/meta<:/?><path:(.*)>', actor_meta.ActorMeta),
     webapp2.Route(r'/<actor_id>/oauth<:/?><path:.*>', actor_oauth.ActorOauth),
     webapp2.Route(r'/<actor_id><:/?>', actor_root.ActorRoot),

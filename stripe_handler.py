@@ -1,5 +1,5 @@
 import webapp2
-from actingweb import aw_web_request
+from actingweb import aw_web_request, actor
 from armyknife import payments
 
 
@@ -23,14 +23,18 @@ class StripeHandler(webapp2.RequestHandler):
 
     def post(self):
         self.init()
+        me = actor.Actor(self.request.params['actor_id'], self.app.registry.get('config'))
         result = payments.process_card(
-            actor_id=self.request.params['actor_id'],
+            actor=me,
             amount=self.request.params['amount'],
+            plan=self.request.params.get('plan', 'monthly'),
             token=self.request.params['stripeToken']
         )
         if result:
-            template = self.app.registry.get('template').get_template('stripe-form-result.html')
+            template = self.app.registry.get('template').get_template('stripe-form-success.html')
             template.globals['STATIC_PREFIX'] = '/static'
             self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))
         else:
-            self.response.set_status(400, 'Failed card processing')
+            template = self.app.registry.get('template').get_template('stripe-form-failure.html')
+            template.globals['STATIC_PREFIX'] = '/static'
+            self.response.write(template.render(self.obj.response.template_values).encode('utf-8'))

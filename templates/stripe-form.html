@@ -43,6 +43,21 @@
     .btn:hover {
       cursor: pointer;
     }
+
+
+ul li label{
+  display: block;
+  position: relative;
+  font-weight: 300;
+  font-size: 1.35em;
+  padding: 25px 25px 25px 80px;
+  margin: 10px auto;
+  height: 30px;
+  z-index: 9;
+  cursor: pointer;
+  -webkit-transition: all 0.25s linear;
+}
+
   </style>
 </head>
 
@@ -61,7 +76,11 @@
     <div>
         <form action="/stripe" method="post" id="payment-form">
             <input type="hidden" name="actor_id" value="{{ ACTOR_ID }}">
-            <input type="hidden" name="amount" value="{{ AMOUNT }}"
+            <input type="hidden" name="amount" value="{{ AMOUNT }}">
+            <input type="radio" id="monthly" name="plan" checked="checked" value="monthly">
+            <label for="monthly">Monthly $2.99</label>
+            <input type="radio" id="yearly" name="plan" value="yearly">
+            <label for="yearly">Yearly $29.99</label>
           <div class="form-row">
             <label for="card-element">
               Credit or debit card
@@ -69,7 +88,6 @@
             <div id="card-element">
               <!-- A Stripe Element will be inserted here. -->
             </div>
-
             <!-- Used to display Element errors. -->
             <div id="card-errors" role="alert"></div>
           </div>
