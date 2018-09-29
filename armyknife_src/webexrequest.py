@@ -134,12 +134,13 @@ class WebexTeamsRequest:
         if headers and self.__signature_header in headers:
             sign = headers[self.__signature_header]
         else:
-            logging.warn('Got an unsigned bot message! (' + str(headers) + ')')
+            logging.warning('Got an unsigned bot message! (' + str(headers) + ')')
             return False
-        msghash = hmac.new(key=self.config.bot['secret'], msg=raw_body, digestmod=hashlib.sha1)
+        key = self.config.bot['secret'].encode('utf-8')
+        msghash = hmac.new(key=key, msg=raw_body, digestmod=hashlib.sha1)
         if msghash.hexdigest() != sign:
-            logging.warn('Signature does not match on bot message!')
-            #self.link.post_admin_message(text='SECURITY ALERT: Got bot message with non-matching signature')
+            logging.warning('Signature does not match on bot message!')
+            # self.link.post_admin_message(text='SECURITY ALERT: Got bot message with non-matching signature')
             return False
         logging.debug('Got signed and verified bot message')
         return True
@@ -151,8 +152,8 @@ class WebexTeamsRequest:
             sign = None
         if sign and len(sign) > 0:
             myhash = hashlib.sha256()
-            myhash.update(self.me.passphrase)
-            msghash = hmac.new(key=myhash.hexdigest(), msg=raw_body, digestmod=hashlib.sha1)
+            myhash.update(self.me.passphrase.encode('utf-8'))
+            msghash = hmac.new(key=myhash.hexdigest().encode('utf-8'), msg=raw_body, digestmod=hashlib.sha1)
             if msghash.hexdigest() == sign:
                 logging.debug('Got signed and verified firehose message')
                 return True

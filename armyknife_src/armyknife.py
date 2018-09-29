@@ -82,7 +82,7 @@ class ArmyKnife:
     def load_room_by_uuid(self, room_id):
         bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
         rooms = bucket.get_bucket()
-        for k, v in rooms.iteritems():
+        for k, v in rooms.items():
             if v["data"]["uuid"] == room_id:
                 ret = {
                     'id': k,
@@ -232,11 +232,11 @@ class ArmyKnife:
         res = message_bucket.get_bucket()
         # Remove autoreminder messages
         msgs = {}
-        for m, v in res.iteritems():
+        for m, v in res.items():
             if v["data"]["comment"][0:2] != self.autoReminderPrefix:
                 msgs[m] = v
         ret = []
-        for m, v in msgs.iteritems():
+        for m, v in msgs.items():
             ret.append({
                 "id": v["data"]["id"],
                 "actor_id": self.actor_id,
@@ -248,7 +248,7 @@ class ArmyKnife:
     def delete_pinned_messages(self, comment=None):
         message_bucket = attribute.Attributes("pinned", self.actor_id, config=self.config)
         msgs = message_bucket.get_bucket()
-        for m, v in msgs.iteritems():
+        for m, v in msgs.items():
             # If comment is specified, only delete that message
             if comment and comment != v["data"]["comment"]:
                 continue
@@ -266,8 +266,8 @@ class ArmyKnife:
         ret = []
         if not msgs:
             return ret
-        for m, v in msgs.iteritems():
-            for a, b in v.iteritems():
+        for m, v in msgs.items():
+            for a, b in v.items():
                 if b["timestamp"] <= now:
                     ret.append({
                         "actor_id": m,

@@ -1,19 +1,19 @@
-FROM python:2
+FROM python:alpine3.6
+MAINTAINER support@greger.io
 
-# Update packages
-RUN apt-get update -y
-
-RUN mkdir ./src
-
-# Bundle app source
+RUN addgroup -g 1000 -S uwsgi && \
+    adduser -u 1000 -S uwsgi -G uwsgi
+RUN mkdir /src
+WORKDIR /src
+COPY Pipfile.lock /src/
+COPY Pipfile /src/
+RUN mkdir -p /var/cache/apk \
+    && ln -s /var/cache/apk /etc/apk/cache
+RUN apk update \
+    && apk add --no-cache -u build-base linux-headers libffi-dev libressl-dev \
+    && pip install --upgrade pip && pip install pipenv
 COPY . /src
-
-# Add test version of actingweb library
-#RUN pip install --index-url https://test.pypi.org/simple/ actingweb
-RUN pip install -r ./src/requirements.txt
-
-# Expose
+RUN pipenv install --system --ignore-pipfile
+RUN apk cache clean
 EXPOSE 5000
-
-# Run
-CMD ["python", "/src/application.py"]
+ENTRYPOINT ["/src/run.sh"]

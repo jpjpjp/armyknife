@@ -165,7 +165,7 @@ class WebexTeamsMessageHandler:
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                     out += "\n\n---\n\n"
                     for i, el in sorted(toplist.items()):
-                        out = out + "**" + unicode(i+1) + "**: " + el + "\n\n"
+                        out = out + "**" + str(i+1) + "**: " + el + "\n\n"
                     per_user_spark.post_bot_message(
                         email=email_owner,
                         text=out,
@@ -178,7 +178,7 @@ class WebexTeamsMessageHandler:
                 if m["id"] and len(m["id"]) > 0:
                     pin = per_user_spark.get_message(spark_id=m["id"])
                     if not pin:
-                        logging.warn('Not able to retrieve message data for pinned message')
+                        logging.warning('Not able to retrieve message data for pinned message')
                         per_user_spark.post_bot_message(
                             email=email_owner,
                             text="You had a pinned reminder, but it was not possible to retrieve details."
@@ -187,7 +187,7 @@ class WebexTeamsMessageHandler:
                     person = per_user_spark.get_person(spark_id=pin['personId'])
                     room = per_user_spark.get_room(spark_id=pin['roomId'])
                     if not person or not room:
-                        logging.warn('Not able to retrieve person and room data for pinned message')
+                        logging.warning('Not able to retrieve person and room data for pinned message')
                         per_user_spark.post_bot_message(
                             email=email_owner,
                             text="You had a pinned reminder, but it was not possible to retrieve details."
@@ -241,7 +241,8 @@ class WebexTeamsMessageHandler:
             return None
         else:
             self.spark.me.set_property('autoreplyMsg-last', self.spark.person_object.lower())
-        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
+        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + \
+               self.spark.me.get_property('autoreplyMsg').value
 
     def message_autoreply(self):
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
@@ -697,8 +698,8 @@ class WebexTeamsMessageHandler:
                 }
             proxy.change_resource(path='resources/folders/' + room["boxFolderId"], params=params)
             if proxy.last_response_code < 200 or proxy.last_response_code > 299:
-                logging.warn('Unable to add/remove collaborator(' + self.spark.person_object +
-                             ') to Box folder(' + room["boxFolderId"] + ')')
+                logging.warning('Unable to add/remove collaborator(' + self.spark.person_object +
+                                ') to Box folder(' + room["boxFolderId"] + ')')
             else:
                 logging.debug('Added/removed collaborator(' + self.spark.person_object +
                               ') to Box folder(' + room["boxFolderId"] + ')')
@@ -966,7 +967,7 @@ class WebexTeamsMessageHandler:
                     continue
                 pin = self.spark.link.get_message(spark_id=m["id"])
                 if not pin:
-                    logging.warn('Not able to retrieve message data for pinned message ')
+                    logging.warning('Not able to retrieve message data for pinned message ')
                     self.spark.link.post_bot_message(
                         email=self.spark.me.creator,
                         text="Not possible to retrieve pinned message details."
@@ -975,7 +976,7 @@ class WebexTeamsMessageHandler:
                 person = self.spark.link.get_person(spark_id=pin['personId'])
                 room = self.spark.link.get_room(spark_id=pin['roomId'])
                 if not person or not room:
-                    logging.warn('Not able to retrieve person and room data for pinned message')
+                    logging.warning('Not able to retrieve person and room data for pinned message')
                     self.spark.link.post_bot_message(
                         email=self.spark.me.creator,
                         text="Not possible to retrieve pinned message person and room details."
@@ -1209,7 +1210,7 @@ class WebexTeamsMessageHandler:
                         for f in msg['files']:
                             details = self.spark.link.get_attachment_details(f)
                             if 'content-disposition' in details:
-                                filename = re.search(ur"filename[^;\n=]*=(['\"])*(?:utf-8\'\')?(.*)(?(1)\1|)",
+                                filename = re.search(r"filename[^;\n=]*=(['\"])*(?:utf-8\'\')?(.*)(?(1)\1|)",
                                                      details['content-disposition']).group(2)
                             else:
                                 filename = 'unknown'

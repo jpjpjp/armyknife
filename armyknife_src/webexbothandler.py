@@ -199,7 +199,7 @@ class WebexTeamsBotHandler:
             self.spark.link.post_admin_message(out, markdown=True)
         out = "----\n\n**Grand total number of users**: " + str(counters["total"]) + "\n\n"
         del (counters["total"])
-        for k, v in counters.iteritems():
+        for k, v in counters.items():
             out += str(k) + ": " + str(v) + "\n\n"
         if len(out) > 0:
             self.spark.link.post_admin_message(out, markdown=True)
@@ -643,7 +643,7 @@ class WebexTeamsBotHandler:
                     out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                 out += "\n\n---\n\n"
                 for i, el in sorted(toplist.items()):
-                    out = out + "**" + unicode(i+1) + "**: " + el + "\n\n"
+                    out = out + "**" + str(i+1) + "**: " + el + "\n\n"
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text=out,
@@ -775,7 +775,7 @@ class WebexTeamsBotHandler:
                 for p, v in properties.items():
                     if p == 'migrated':
                         continue
-                    if not isinstance(v, str) and not isinstance(v, unicode):
+                    if not isinstance(v, str) and not isinstance(v, str):
                         try:
                             v = json.dumps(v)
                         except (TypeError, KeyError, ValueError):
