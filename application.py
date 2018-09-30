@@ -8,7 +8,7 @@ from actingweb.handlers import callbacks, properties, meta, root, trust, devtest
     subscription, resources, oauth, callback_oauth, bot, www, factory
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 
 # The on_aw object we will use to do app-specific processing
 OBJ_ON_AW = on_aw.OnAWWebexTeams()

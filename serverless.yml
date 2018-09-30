@@ -1,0 +1,52 @@
+# serverless.yml
+
+service: armyknife
+
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+custom:
+  wsgi:
+    app: application.app
+    packRequirements: false
+  pythonRequirements:
+    dockerizePip: non-linux
+  db_prefix: armyknife_dev
+
+provider:
+  name: aws
+  runtime: python3.6
+  memorySize: 128
+  timeout: 300
+  stage: dev
+  region: us-west-1
+  environment:
+    APP_HOST_FQDN: 'me.greger.io'
+    APP_HOST_PROTOCOL: 'https://'
+    AWS_DB_PREFIX: ${self:custom.db_prefix}
+    APP_BOT_TOKEN: ''
+    APP_BOT_EMAIL: ''
+    APP_BOT_SECRET: ''
+    APP_BOT_ADMIN_ROOM: ''
+    APP_OAUTH_ID: ''
+    APP_OAUTH_KEY: ''
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:CreateTable
+        - dynamodb:DescribeTable
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:custom.db_prefix}_*"
+
+functions:
+  app:
+    handler: wsgi.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'

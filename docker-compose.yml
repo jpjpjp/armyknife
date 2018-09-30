@@ -10,11 +10,13 @@ services:
       - APP_HOST_PROTOCOL=http://
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
+      - AWS_DB_PREFIX
+      - AWS_DEFAULT_REGION=us-west-1
       - APP_BOT_SECRET
       - APP_BOT_ADMIN_ROOM
-      - APP_OAUTH_ID
       - APP_BOT_TOKEN
       - APP_BOT_EMAIL
+      - APP_OAUTH_ID
       - APP_OAUTH_KEY
     volumes:
       - .:/src

@@ -1184,7 +1184,7 @@ class WebexTeamsMessageHandler:
             for key in self.spark.room_data:
                 msg = msg + "**" + str(key) + "**: " + str(self.spark.room_data[key]) + "\n\n"
                 if key == 'id':
-                    id2 = base64.b64decode(self.spark.room_data[key]).split("ROOM/")
+                    id2 = base64.b64decode(self.spark.room_data[key].encode('utf-8')).decode('utf-8').split("ROOM/")
                     if len(id2) >= 2:
                         msg = msg + "**Web URL**:" + " https://web.ciscospark.com/rooms/" + id2[1] + "\n\n"
             if len(msg) > 0:
