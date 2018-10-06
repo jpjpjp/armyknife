@@ -1049,10 +1049,9 @@ class WebexTeamsMessageHandler:
                     nr = None
             else:
                 nr = 0
-            if nr > 10:
+            max_back = 10
+            if nr and nr > 10:
                 max_back = nr + 1
-            else:
-                max_back = 10
             targettime = None
             comment = None
             if len(self.spark.msg_list) > 2:

@@ -1,5 +1,7 @@
 import os
+import sys
 import logging
+import json
 from flask import Flask, request, redirect, Response, render_template
 from actingweb import config
 from actingweb import aw_web_request
@@ -7,6 +9,9 @@ from armyknife_src import on_aw
 from actingweb.handlers import callbacks, properties, meta, root, trust, devtest, \
     subscription, resources, oauth, callback_oauth, bot, www, factory
 
+logging.basicConfig(stream=sys.stderr, level=os.getenv('LOG_LEVEL', "INFO"))
+LOG = logging.getLogger()
+LOG.setLevel(os.getenv('LOG_LEVEL', "INFO"))
 
 app = Flask(__name__, static_url_path='/static')
 
@@ -86,11 +91,13 @@ class Handler:
             for cookie in raw_cookies.split("; "):
                 name, value = cookie.split("=")
                 cookies[name] = value
+        LOG.debug('Path: ' + req.url + ', params(' + json.dumps(req.values) + ')' + ', body (' + \
+                      json.dumps(req.data.decode('utf-8')) + ')')
         self.webobj = aw_web_request.AWWebObj(
-            url=request.url,
-            params=request.values,
-            body=request.data,
-            headers=request.headers,
+            url=req.url,
+            params=req.values,
+            body=req.data,
+            headers=req.headers,
             cookies=cookies
         )
         if not req or not req.path:
@@ -174,7 +181,7 @@ class Handler:
                     self.handler = devtest.DevtestHandler(
                         self.webobj, get_config(), on_aw=OBJ_ON_AW)
         if not self.handler:
-            logging.warning('Handler was not set with path: ' + req.url)
+            LOG.warning('Handler was not set with path: ' + req.url)
 
     def process(self, **kwargs):
         try:
@@ -367,7 +374,6 @@ if __name__ == "__main__":
     # (and add to requirements.txt)
     # import pydevd
     # pydevd.settrace('docker.for.mac.localhost', port=3001, stdoutToServer=True, stderrToServer=True)
-
-    logging.debug('Starting up the ArmyKnife ...')
+    LOG.debug('Starting up the ArmyKnife ...')
     # Only for debugging while developing
     app.run(host='0.0.0.0', debug=True, port=5000)

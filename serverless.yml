@@ -17,10 +17,11 @@ provider:
   name: aws
   runtime: python3.6
   memorySize: 128
-  timeout: 300
+  timeout: 30
   stage: dev
   region: us-west-1
   environment:
+    LOG_LEVEL: 'DEBUG'
     APP_HOST_FQDN: 'me.greger.io'
     APP_HOST_PROTOCOL: 'https://'
     AWS_DB_PREFIX: ${self:custom.db_prefix}
