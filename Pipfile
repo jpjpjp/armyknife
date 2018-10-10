@@ -13,6 +13,7 @@ Flask = "*"
 uWSGI = "*"
 actingweb = "*"
 pytz = "*"
+boto3 = "*"
 
 [dev-packages]
 pydevd = "*"

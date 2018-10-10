@@ -5,6 +5,7 @@ service: armyknife
 plugins:
   - serverless-python-requirements
   - serverless-wsgi
+  - serverless-pseudo-parameters
 custom:
   wsgi:
     app: application.app
@@ -12,6 +13,7 @@ custom:
   pythonRequirements:
     dockerizePip: non-linux
   db_prefix: armyknife_dev
+  execRoleArn: { "Fn::Join" : ["", [ "arn:aws:iam::", { "Ref" : "AWS::AccountId" }, ":role/ecsTaskExecutionRole" ] ] }
 
 provider:
   name: aws
@@ -44,7 +46,14 @@ provider:
         - dynamodb:CreateTable
         - dynamodb:DescribeTable
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:custom.db_prefix}_*"
-
+    - Effect: "Allow"
+      Action:
+        - ecs:RunTask
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - iam:PassRole
+      Resource: ${self:custom.execRoleArn}
 functions:
   app:
     handler: wsgi.handler

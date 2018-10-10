@@ -5,6 +5,7 @@ from actingweb import on_aw
 from armyknife_src import webexrequest
 from armyknife_src import webexbothandler
 from armyknife_src import webexmessagehandler
+from armyknife_src import fargate
 
 
 class OnAWWebexTeams(on_aw.OnAWBase):
@@ -180,7 +181,8 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                                                auth=self.auth,
                                                myself=None,
                                                config=self.config)
-        if not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
+        if not fargate.in_fargate() and \
+                not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
             return 404
         # Try to re-init from person_id in the message
         spark.re_init()

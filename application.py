@@ -2,12 +2,13 @@ import os
 import sys
 import logging
 import json
+from urllib.parse import urlparse
 from flask import Flask, request, redirect, Response, render_template
 from actingweb import config
 from actingweb import aw_web_request
-from armyknife_src import on_aw
-from actingweb.handlers import callbacks, properties, meta, root, trust, devtest, \
-    subscription, resources, oauth, callback_oauth, bot, www, factory
+from armyknife_src import (on_aw, fargate)
+from actingweb.handlers import (callbacks, properties, meta, root, trust, devtest,
+                                subscription, resources, oauth, callback_oauth, bot, www, factory)
 
 logging.basicConfig(stream=sys.stderr, level=os.getenv('LOG_LEVEL', "INFO"))
 LOG = logging.getLogger()
@@ -76,38 +77,72 @@ def get_config():
     )
 
 
+class SimplifyRequest:
+
+    def __init__(self, req):
+        if isinstance(req, dict):
+            self._req = req
+            if isinstance(self._req['data'], str):
+                req['data'] = req['data'].encode('utf-8')
+            if 'method' not in self._req:
+                self._req['method'] = 'POST'
+            if 'path' not in req:
+                self._req['path'] = urlparse(req['url']).path
+        else:
+            cookies = {}
+            raw_cookies = req.headers.get("Cookie")
+            if raw_cookies:
+                for cookie in raw_cookies.split("; "):
+                    name, value = cookie.split("=")
+                    cookies[name] = value
+            headers = {}
+            for k, v in req.headers.items():
+                headers[k] = v
+            params = {}
+            for k, v in req.values.items():
+                params[k] = v
+            self._req = {
+                'method': req.method,
+                'path': req.path,
+                'data': req.data,
+                'headers': headers,
+                'cookies': cookies,
+                'values': params,
+                'url': req.url
+            }
+
+    def __getattr__(self, key):
+        try:
+            return self._req[key]
+        except KeyError:
+            raise AttributeError(key)
+
+
 class Handler:
 
     def __init__(self, req):
+        req = SimplifyRequest(req)
         self.handler = None
-        self.request = None
         self.response = None
         self.actor_id = None
-        self.path = None
+        self.path = req.path
         self.method = req.method
-        cookies = {}
-        raw_cookies = req.headers.get("Cookie")
-        if raw_cookies:
-            for cookie in raw_cookies.split("; "):
-                name, value = cookie.split("=")
-                cookies[name] = value
         LOG.debug('Path: ' + req.url + ', params(' + json.dumps(req.values) + ')' + ', body (' + \
-                      json.dumps(req.data.decode('utf-8')) + ')')
+                  json.dumps(req.data.decode('utf-8')) + ')')
         self.webobj = aw_web_request.AWWebObj(
             url=req.url,
             params=req.values,
             body=req.data,
             headers=req.headers,
-            cookies=cookies
+            cookies=req.cookies
         )
-        if not req or not req.path:
+        if not req or not self.path:
             return
-        self.request = req
-        if req.path == '/':
+        if self.path == '/':
             self.handler = factory.RootFactoryHandler(
                 self.webobj, get_config(), on_aw=OBJ_ON_AW)
         else:
-            path = req.path.split('/')
+            path = self.path.split('/')
             self.path = path
             f = path[1]
             if f == 'oauth':
@@ -369,11 +404,25 @@ def app_oauth_callback():
         return Response(status=404)
     return h.get_response()
 
+
 if __name__ == "__main__":
     # To debug in pycharm inside the Docker container, remember to uncomment import pydevd as well
     # (and add to requirements.txt)
     # import pydevd
     # pydevd.settrace('docker.for.mac.localhost', port=3001, stdoutToServer=True, stderrToServer=True)
-    LOG.debug('Starting up the ArmyKnife ...')
-    # Only for debugging while developing
-    app.run(host='0.0.0.0', debug=True, port=5000)
+
+    actor_id = os.getenv('ACTINGWEB_ACTOR', None)
+    payload = os.getenv('ACTINGWEB_PAYLOAD', None)
+
+    if payload:
+        req = SimplifyRequest(fargate.get_request(payload))
+        h = Handler(req)
+        if '/bot' in req.path:
+            h.process(path=req.path)
+        elif '/callbacks' in req.path:
+            name = req.path[1 + len(actor_id) + len('/callbacks/'):]
+            h.process(actor_id=actor_id, name=name)
+    else:
+        LOG.debug('Starting up the ArmyKnife ...')
+        # Only for debugging while developing
+        app.run(host='0.0.0.0', debug=True, port=5000)

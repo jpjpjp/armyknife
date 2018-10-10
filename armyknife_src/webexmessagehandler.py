@@ -6,6 +6,7 @@ import base64
 import hashlib
 from . import ciscowebexteams
 from . import armyknife
+from . import fargate
 from actingweb import actor
 from actingweb import auth
 from actingweb import aw_proxy
@@ -813,13 +814,19 @@ class WebexTeamsMessageHandler:
                     text="Usage: `/checkmember <email>` to check room memberships for the email",
                     markdown=True)
                 return
+            if not fargate.in_fargate():
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="You requested a tough task! I will call upon one of my workers to check memberships...",
+                    markdown=True)
+                fargate.fork_container(self.webobj.request, self.spark.actor_id)
             else:
                 target = self.spark.msg_list[1]
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="**Room memberships for " + target + "**\n\n----\n\n",
-                markdown=True)
-            self.check_member(target)
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="**Room memberships for " + target + "**\n\n----\n\n",
+                    markdown=True)
+                self.check_member(target)
         elif self.spark.cmd == '/deletemember':
             if len(self.spark.msg_list) < 3:
                 self.spark.link.post_bot_message(
