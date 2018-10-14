@@ -28,8 +28,7 @@ class ArmyKnife:
         room = self.load_room(room_id)
         if room and 'uuid' in room:
             return room["uuid"]
-        room_uuid = uuid.uuid5(uuid.NAMESPACE_URL, room_id.encode(
-            encoding='ascii')).get_hex()
+        room_uuid = uuid.uuid5(uuid.NAMESPACE_URL, str(room_id)).hex
         newroom = self.add_to_room(room_id=room_id, room_uuid=room_uuid)
         return newroom["uuid"]
 
@@ -55,7 +54,7 @@ class ArmyKnife:
         if not room_id:
             return False
         bucket = attribute.Attributes(actor_id=self.actor_id, bucket="rooms", config=self.config)
-        room = bucket.get_attr(room_id)["data"]
+        room = bucket.get_attr(room_id).get("data", None)
         if not room:
             return False
         if del_uuid:

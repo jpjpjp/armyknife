@@ -4,9 +4,9 @@ import logging
 import re
 import base64
 import hashlib
-from . import ciscowebexteams
-from . import armyknife
-from . import fargate
+from armyknife_src import ciscowebexteams
+from armyknife_src import armyknife
+from armyknife_src import fargate
 from actingweb import actor
 from actingweb import auth
 from actingweb import aw_proxy
@@ -96,12 +96,13 @@ class WebexTeamsMessageHandler:
                 text="Failed adding new member " +
                      email + " to room " + roominfo['title'])
             self.webobj.response.template_values["template_path"] = 'spark-joinedroom-failed.html'
+            return False
         else:
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text="Added new member " + email + " to room " + roominfo['title'])
             self.webobj.response.template_values["template_path"] = 'spark-joinedroom.html'
-        return
+        return True
 
     def global_actions(self):
         """ Do actions that are not related to a specific user """
@@ -496,7 +497,7 @@ class WebexTeamsMessageHandler:
         if len(self.spark.msg_list) < 3 and not (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'list'):
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="Usage: `/manageteam add|remove|list <teamname> <email(s)>` where emails are"
+                text="Usage: `/manageteam add|remove|list|delete <teamname> <email(s)>` where emails are"
                      " comma-separated\n\n"
                      "Use `/manageteam list` to list all teams",
                 markdown=True)
@@ -1174,13 +1175,13 @@ class WebexTeamsMessageHandler:
                     spark_id=self.spark.room_id, text="Public URI: " + self.spark.config.root +
                     self.spark.me.id + '/callbacks/joinroom?id=' + uuid)
         elif self.spark.cmd == '/makeprivate':
-            if not self.spark.store.delete_from_room(self.spark.room_id, uuid=True):
+            if not self.spark.store.delete_from_room(self.spark.room_id, del_uuid=True):
                 self.spark.link.post_message(
-                    id=self.spark.room_id,
+                    spark_id=self.spark.room_id,
                     text="Failed to make room private.")
             else:
                 self.spark.link.post_message(
-                    id=self.spark.room_id,
+                    spark_id=self.spark.room_id,
                     text="Made room private and add URL will not work anymore.")
         elif self.spark.cmd == '/listroom':
             self.spark.link.delete_message(self.spark.object_id)

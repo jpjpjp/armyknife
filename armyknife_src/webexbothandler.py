@@ -1,16 +1,17 @@
 import json
 import datetime
 import logging
-import hashlib
 from actingweb import actor
+from armyknife_src import fargate
 
 
 class WebexTeamsBotHandler:
     """ Class with all methods to handle bot requests
     """
 
-    def __init__(self, spark=None):
+    def __init__(self, spark=None, webobj=None):
         self.spark = spark
+        self.webobj = webobj
 
     def init_me(self):
         if not self.spark.actor_id:
@@ -234,7 +235,13 @@ class WebexTeamsBotHandler:
                 "Use `/stats` to see statistics on command usage.",
                 markdown=True)
         elif self.spark.cmd == "/all-users":
-            self.exec_all_users()
+            if not fargate.in_fargate():
+                self.spark.link.post_admin_message(
+                    "You requested a tough task! I will call upon one of my workers to do /all-users tasks...",
+                    markdown=True)
+                fargate.fork_container(self.webobj.request, self.spark.actor_id)
+            else:
+                self.exec_all_users()
         else:
             self.spark.link.post_admin_message("Unknown command. Try /help.")
 
@@ -566,9 +573,9 @@ class WebexTeamsBotHandler:
                         newlist = {}
                         for k in toplist:
                             if int(k) < int(index):
-                                newlist[k] = toplist[k]
+                                newlist[str(k)] = toplist[k]
                             else:
-                                newlist[int(k) + 1] = toplist[k]
+                                newlist[str(int(k) + 1)] = toplist[k]
                         newlist[index] = listitem
                         toplist = newlist
                         self.spark.link.post_bot_message(

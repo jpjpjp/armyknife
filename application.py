@@ -377,6 +377,14 @@ def app_callbacks(actor_id, name=''):
     h = Handler(request)
     if not h.process(actor_id=actor_id, name=name):
         return Response(status=404)
+    if request.method == 'GET':
+        if name and name == 'joinroom':
+            return render_template('teams-joinroom.html', **h.webobj.response.template_values)
+    if request.method == 'POST' and h.webobj.response.template_values:
+        if 200 <= h.get_status() < 299:
+            return render_template('teams-joinedroom.html', **h.webobj.response.template_values)
+        else:
+            return render_template('teams-joinedroom-failed.html', **h.webobj.response.template_values)
     return h.get_response()
 
 

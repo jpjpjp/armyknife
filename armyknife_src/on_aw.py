@@ -201,7 +201,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
         #   2. memberships, created -> two messages, one for the bot and one for the user
         #   3. messages, created -> either from the bot or from the user depending on who initiated the request
         #
-        handler = webexbothandler.WebexTeamsBotHandler(spark)
+        handler = webexbothandler.WebexTeamsBotHandler(spark, self.webobj)
         if spark.body['resource'] == 'rooms':
             if spark.body['event'] == 'created':
                 handler.rooms_created()
