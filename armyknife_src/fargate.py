@@ -33,19 +33,19 @@ def fork_container(req, actor_id):
         'url': req.url
     }
     webreq = base64.b64encode(json.dumps(webreq).encode('utf-8')).decode('utf-8')
-    client = boto3.client('ecs', region_name='us-west-2')
+    client = boto3.client('ecs', region_name=os.getenv('AWS_FARGATE_REGION', 'us-west-2'))
     response = client.run_task(
-        cluster=os.getenv('FARGATE_CLUSTER', 'default'),
+        cluster=os.getenv('AWS_FARGATE_CLUSTER', 'default'),
         launchType='FARGATE',
-        taskDefinition=os.getenv('FARGATE_TASK', 'armyknife-fargate-dev'),
+        taskDefinition=os.getenv('AWS_FARGATE_TASK', 'armyknife-fargate-dev'),
         networkConfiguration={
             'awsvpcConfiguration': {
                 'subnets': [
-                    'subnet-0fe25e095542cf484',
-                    'subnet-0d7f06e8a44c4ab4e'
+                    os.getenv('AWS_FARGATE_SUBNET1', ''),
+                    os.getenv('AWS_FARGATE_SUBNET2', '')
                 ],
                 'securityGroups': [
-                    'sg-07182a58113457cda',
+                    os.getenv('AWS_FARGATE_SEC_GROUP', '')
                 ],
                 'assignPublicIp': 'ENABLED'
             }
@@ -53,7 +53,7 @@ def fork_container(req, actor_id):
         overrides={
             'containerOverrides': [
                 {
-                    'name': 'armyknife-fargate-dev',
+                    'name': os.getenv('AWS_FARGATE_TASK', 'armyknife-fargate-dev'),
                     'command': [
                         '/usr/local/bin/python',
                         '/src/application.py'

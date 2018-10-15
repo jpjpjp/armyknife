@@ -215,7 +215,7 @@ class WebexTeamsRequest:
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve message data to enrich from Army Knife. Code(" + str(
                         last_err['code']) +
-                    ") - " + last_err['message'])
+                    ") - " + last_err['message'].decode('utf-8'))
                 if last_err['code'] == 400:
                     now = datetime.datetime.utcnow()
                     token_invalid = self.me.get_property('token_invalid').value

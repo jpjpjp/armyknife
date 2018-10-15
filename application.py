@@ -65,7 +65,7 @@ def get_config():
         force_email_prop_as_creator=True,
         unique_creator=True,
         www_auth="oauth",
-        logLevel="DEBUG",
+        logLevel=os.getenv('LOG_LEVEL', "INFO"),
         ui=True,
         bot={
             "token": bot_token,
