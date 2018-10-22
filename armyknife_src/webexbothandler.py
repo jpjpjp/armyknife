@@ -141,7 +141,7 @@ class WebexTeamsBotHandler:
                 counters[str(service_status)] = 1
             if cmd == "list":
                 out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
-            elif filter and ('filter' in cmd):
+            elif 'filter' in cmd:
                 attr = a.get_property(str(msg_filter)).value
                 if not attr and filter_value and filter_value == "None":
                     attr = "None"

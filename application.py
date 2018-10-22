@@ -263,8 +263,7 @@ def app_root():
         return Response(status=404)
     if request.method == 'GET':
         return render_template('aw-root-factory.html', **h.webobj.response.template_values)
-    if h.get_status() == 200:
-        return h.get_response()
+    return h.get_response()
 
 
 @app.route('/<actor_id>', methods=['GET', 'POST', 'DELETE'], strict_slashes=False)
