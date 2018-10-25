@@ -27,6 +27,12 @@ provider:
     APP_HOST_FQDN: 'me.greger.io'
     APP_HOST_PROTOCOL: 'https://'
     AWS_DB_PREFIX: ${self:custom.db_prefix}
+    AWS_FARGATE_REGION: 'us-west-2'
+    AWS_FARGATE_CLUSTER: 'default'
+    AWS_FARGATE_TASK: 'armyknife-fargate-dev'
+    AWS_FARGATE_SEC_GROUP: 'sg-...'
+    AWS_FARGATE_SUBNET1: 'subnet-...'
+    AWS_FARGATE_SUBNET2: 'subnet-...'
     APP_BOT_TOKEN: ''
     APP_BOT_EMAIL: ''
     APP_BOT_SECRET: ''
