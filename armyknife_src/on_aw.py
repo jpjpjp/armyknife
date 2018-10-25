@@ -2,12 +2,13 @@ import json
 import logging
 import hashlib
 from actingweb import on_aw
-from . import webexrequest
-from . import webexbothandler
-from . import webexmessagehandler
+from armyknife_src import webexrequest
+from armyknife_src import webexbothandler
+from armyknife_src import webexmessagehandler
+from armyknife_src import fargate
 
 
-class OnAWWebexTeams(object, on_aw.OnAWBase):
+class OnAWWebexTeams(on_aw.OnAWBase):
 
     def delete_actor(self):
         """ Here we need to do additional cleanup when a user is deleted """
@@ -146,7 +147,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
                     text=str(self.auth.oauth.last_response_code) + ':' + self.auth.oauth.last_response_message)
                 return True
         msghash = hashlib.sha256()
-        msghash.update(spark.me.passphrase)
+        msghash.update(spark.me.passphrase.encode('utf-8'))
         hook = spark.link.register_webhook(
             name='Firehose',
             target=self.config.root + spark.me.id + '/callbacks/firehose',
@@ -180,7 +181,8 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
                                                auth=self.auth,
                                                myself=None,
                                                config=self.config)
-        if not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
+        if not fargate.in_fargate() and \
+                not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
             return 404
         # Try to re-init from person_id in the message
         spark.re_init()
@@ -199,7 +201,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
         #   2. memberships, created -> two messages, one for the bot and one for the user
         #   3. messages, created -> either from the bot or from the user depending on who initiated the request
         #
-        handler = webexbothandler.WebexTeamsBotHandler(spark)
+        handler = webexbothandler.WebexTeamsBotHandler(spark, self.webobj)
         if spark.body['resource'] == 'rooms':
             if spark.body['event'] == 'created':
                 handler.rooms_created()
@@ -298,7 +300,8 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
                 spark.link.post_bot_message(
                     email=spark.me.creator,
                     text="All your account data and the Cisco Webex Teams webhook was deleted. Sorry to see you"
-                         " leaving!\n\nThis 1:1 cannot be deleted (Cisco Webex Teams feature), and you can any time type /init"
+                         " leaving!\n\nThis 1:1 cannot be deleted (Cisco Webex Teams feature), "
+                         "and you can any time type /init"
                          " here to register a new account.",
                     markdown=True)
             else:
@@ -343,7 +346,7 @@ class OnAWWebexTeams(object, on_aw.OnAWBase):
             if room and 'data' in data and 'suggested_txt' in data['data']:
                 spark.link.post_message(room.id, '**From Box:** ' + data['data']['suggested_txt'], markdown=True)
             else:
-                logging.warn('Was not able to post callback message to Cisco Webex Teams room.')
+                logging.warning('Was not able to post callback message to Cisco Webex Teams room.')
         else:
             logging.debug('No resource in received subscription data.')
         return True

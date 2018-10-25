@@ -1,0 +1,68 @@
+# serverless.yml
+
+service: armyknife
+
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+  - serverless-pseudo-parameters
+custom:
+  wsgi:
+    app: application.app
+    packRequirements: false
+  pythonRequirements:
+    dockerizePip: non-linux
+  db_prefix: armyknife_dev
+  execRoleArn: { "Fn::Join" : ["", [ "arn:aws:iam::", { "Ref" : "AWS::AccountId" }, ":role/ecsTaskExecutionRole" ] ] }
+
+provider:
+  name: aws
+  runtime: python3.6
+  memorySize: 128
+  timeout: 30
+  stage: dev
+  region: us-west-1
+  environment:
+    LOG_LEVEL: 'DEBUG'
+    APP_HOST_FQDN: 'me.greger.io'
+    APP_HOST_PROTOCOL: 'https://'
+    AWS_DB_PREFIX: ${self:custom.db_prefix}
+    AWS_FARGATE_REGION: 'us-west-2'
+    AWS_FARGATE_CLUSTER: 'default'
+    AWS_FARGATE_TASK: 'armyknife-fargate-dev'
+    AWS_FARGATE_SEC_GROUP: 'sg-...'
+    AWS_FARGATE_SUBNET1: 'subnet-...'
+    AWS_FARGATE_SUBNET2: 'subnet-...'
+    APP_BOT_TOKEN: ''
+    APP_BOT_EMAIL: ''
+    APP_BOT_SECRET: ''
+    APP_BOT_ADMIN_ROOM: ''
+    APP_OAUTH_ID: ''
+    APP_OAUTH_KEY: ''
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:CreateTable
+        - dynamodb:DescribeTable
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:custom.db_prefix}_*"
+    - Effect: "Allow"
+      Action:
+        - ecs:RunTask
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - iam:PassRole
+      Resource: ${self:custom.execRoleArn}
+functions:
+  app:
+    handler: wsgi.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'

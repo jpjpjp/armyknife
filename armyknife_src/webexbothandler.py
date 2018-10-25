@@ -1,16 +1,17 @@
 import json
 import datetime
 import logging
-import hashlib
 from actingweb import actor
+from armyknife_src import fargate
 
 
 class WebexTeamsBotHandler:
     """ Class with all methods to handle bot requests
     """
 
-    def __init__(self, spark=None):
+    def __init__(self, spark=None, webobj=None):
         self.spark = spark
+        self.webobj = webobj
 
     def init_me(self):
         if not self.spark.actor_id:
@@ -140,7 +141,7 @@ class WebexTeamsBotHandler:
                 counters[str(service_status)] = 1
             if cmd == "list":
                 out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
-            elif filter and ('filter' in cmd):
+            elif 'filter' in cmd:
                 attr = a.get_property(str(msg_filter)).value
                 if not attr and filter_value and filter_value == "None":
                     attr = "None"
@@ -199,7 +200,7 @@ class WebexTeamsBotHandler:
             self.spark.link.post_admin_message(out, markdown=True)
         out = "----\n\n**Grand total number of users**: " + str(counters["total"]) + "\n\n"
         del (counters["total"])
-        for k, v in counters.iteritems():
+        for k, v in counters.items():
             out += str(k) + ": " + str(v) + "\n\n"
         if len(out) > 0:
             self.spark.link.post_admin_message(out, markdown=True)
@@ -234,7 +235,13 @@ class WebexTeamsBotHandler:
                 "Use `/stats` to see statistics on command usage.",
                 markdown=True)
         elif self.spark.cmd == "/all-users":
-            self.exec_all_users()
+            if not fargate.in_fargate():
+                self.spark.link.post_admin_message(
+                    "You requested a tough task! I will call upon one of my workers to do /all-users tasks...",
+                    markdown=True)
+                fargate.fork_container(self.webobj.request, self.spark.actor_id)
+            else:
+                self.exec_all_users()
         else:
             self.spark.link.post_admin_message("Unknown command. Try /help.")
 
@@ -566,9 +573,9 @@ class WebexTeamsBotHandler:
                         newlist = {}
                         for k in toplist:
                             if int(k) < int(index):
-                                newlist[k] = toplist[k]
+                                newlist[str(k)] = toplist[k]
                             else:
-                                newlist[int(k) + 1] = toplist[k]
+                                newlist[str(int(k) + 1)] = toplist[k]
                         newlist[index] = listitem
                         toplist = newlist
                         self.spark.link.post_bot_message(
@@ -643,7 +650,7 @@ class WebexTeamsBotHandler:
                     out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                 out += "\n\n---\n\n"
                 for i, el in sorted(toplist.items()):
-                    out = out + "**" + unicode(i+1) + "**: " + el + "\n\n"
+                    out = out + "**" + str(i+1) + "**: " + el + "\n\n"
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
                     text=out,
@@ -761,72 +768,6 @@ class WebexTeamsBotHandler:
         # There shouldn't be other room types, but just in case
         if self.spark.room_type != 'direct':
             return
-        if not self.spark.me or not self.spark.me.id:
-            # migrate = requests.get('https://spark-army-knife.appspot.com/migration/' + self.spark.person_object,
-            #                       headers={
-            #                           'Authorization': 'Bearer 65kN%57ItPNSQVHS',
-            #                        })
-            migrate = None
-            if migrate:
-                properties = migrate.json()
-                myself = actor.Actor(config=self.spark.config)
-                myself.create(url=self.spark.config.root + 'bot', passphrase=self.spark.config.new_token(),
-                              creator=self.spark.person_object, delete=True)
-                for p, v in properties.items():
-                    if p == 'migrated':
-                        continue
-                    if not isinstance(v, str) and not isinstance(v, unicode):
-                        try:
-                            v = json.dumps(v)
-                        except (TypeError, KeyError, ValueError):
-                            pass
-                    if p == 'oauthId' and v != self.spark.person_id:
-                        myself.delete()
-                        logging.warning('Tried to migrate a user without the same spark id: ' +
-                                        self.spark.person_object)
-                        return
-                    myself.set_property(p, v)
-                self.spark.re_init(new_actor=myself)
-                if 'firehoseId' in properties:
-                    if not self.spark.link.unregister_webhook(properties['firehoseId']):
-                        self.spark.link.post_bot_message(
-                            email=self.spark.person_object,
-                            text="Not able to re-initialize properly from the old Army Knife. Please do /init (again)",
-                            markdown=True)
-                        self.spark.link.post_admin_message(
-                            text="Successfully migrated account, but could not delete firehose: " +
-                                 self.spark.person_object)
-                        return
-                msghash = hashlib.sha256()
-                msghash.update(myself.passphrase)
-                hook = self.spark.link.register_webhook(
-                    name='Firehose',
-                    target=self.spark.config.root + myself.id + '/callbacks/firehose',
-                    resource='all',
-                    event='all',
-                    secret=msghash.hexdigest()
-                )
-                if hook and hook['id']:
-                    logging.debug('Successfully registered messages firehose webhook')
-                    myself.set_property('firehoseId', hook['id'])
-                else:
-                    self.spark.link.post_bot_message(
-                        email=self.spark.person_object,
-                        text="Welcome to the new Army Knife!\n\n"
-                             "Not able to re-initialize properly from old Army Knife."
-                             "Your account has probably timed out. Please do /init (again)",
-                        markdown=True)
-                    self.spark.link.post_admin_message(
-                        text="Successfully migrated account, but could not create firehose: " +
-                             self.spark.person_object)
-                    return
-                logging.debug("Successfully migrated " + self.spark.person_object)
-                self.spark.link.post_bot_message(
-                    email=self.spark.person_object,
-                    text="Successfully migrated your account from old Army Knife. Try with /me",
-                    markdown=True)
-                self.spark.link.post_admin_message(
-                    text="Successfully migrated account: " + self.spark.person_object)
         if self.spark.cmd == '/init':
             self.init_me()
             return

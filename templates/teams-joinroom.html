@@ -1,0 +1,37 @@
+<!--suppress HtmlFormInputWithoutLabel -->
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome to the Army Knife</title>
+
+    <link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/css/materialize.min.css'>
+<link rel='stylesheet prefetch' href='https://fonts.googleapis.com/icon?family=Material+Icons'>
+<link rel='stylesheet prefetch' href='https://fonts.googleapis.com/css?family=Architects+Daughter|Roboto&subset=latin,devanagari'>
+<link rel='stylesheet prefetch' href='https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css'>
+
+      <link rel="stylesheet" href="/static/style.css")>
+
+
+</head>
+
+  <body class="welcome">
+
+  <main class="valign-wrapper">
+    <span class="container grey-text text-darken-1 ">
+
+      <p class="flow-text">Welcome to</p>
+      <h1 class="title grey-text text-darken-3">{{ title }}!</h1>
+
+    You will be added to the Webex Teams room <b>{{ title }}</b> by filling in your address below. If you are not already a Webex Teams user, you will be invited to Webex Teams.
+    <form method="post">
+      <div>Your email address:<input type="text" name="email" maxlength="100" /></div>
+      <input type="hidden" name="id" value="{{ id }}">
+      <div><input type="submit" value="Join room"></div>
+    </form>
+    </span>
+  </main>
+
+  </body>
+</html>

@@ -191,7 +191,7 @@ class CiscoWebexTeams:
         if self.auth.oauth.last_response_code == 404:
             refresh = self.auth.oauth.oauth_refresh_token(refresh_token=self.auth.refresh_token)
             if not refresh:
-                logging.warn('Tried token refresh based on 404 from Army Knife, but failed')
+                logging.warning('Tried token refresh based on 404 from Army Knife, but failed')
             else:
                 ret = self.auth.oauth_get(self.spark['message_uri'] + '/' + spark_id)
         return ret

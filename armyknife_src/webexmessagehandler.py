@@ -4,8 +4,9 @@ import logging
 import re
 import base64
 import hashlib
-from . import ciscowebexteams
-from . import armyknife
+from armyknife_src import ciscowebexteams
+from armyknife_src import armyknife
+from armyknife_src import fargate
 from actingweb import actor
 from actingweb import auth
 from actingweb import aw_proxy
@@ -95,12 +96,13 @@ class WebexTeamsMessageHandler:
                 text="Failed adding new member " +
                      email + " to room " + roominfo['title'])
             self.webobj.response.template_values["template_path"] = 'spark-joinedroom-failed.html'
+            return False
         else:
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text="Added new member " + email + " to room " + roominfo['title'])
             self.webobj.response.template_values["template_path"] = 'spark-joinedroom.html'
-        return
+        return True
 
     def global_actions(self):
         """ Do actions that are not related to a specific user """
@@ -165,7 +167,7 @@ class WebexTeamsMessageHandler:
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                     out += "\n\n---\n\n"
                     for i, el in sorted(toplist.items()):
-                        out = out + "**" + unicode(i+1) + "**: " + el + "\n\n"
+                        out = out + "**" + str(i+1) + "**: " + el + "\n\n"
                     per_user_spark.post_bot_message(
                         email=email_owner,
                         text=out,
@@ -178,7 +180,7 @@ class WebexTeamsMessageHandler:
                 if m["id"] and len(m["id"]) > 0:
                     pin = per_user_spark.get_message(spark_id=m["id"])
                     if not pin:
-                        logging.warn('Not able to retrieve message data for pinned message')
+                        logging.warning('Not able to retrieve message data for pinned message')
                         per_user_spark.post_bot_message(
                             email=email_owner,
                             text="You had a pinned reminder, but it was not possible to retrieve details."
@@ -187,7 +189,7 @@ class WebexTeamsMessageHandler:
                     person = per_user_spark.get_person(spark_id=pin['personId'])
                     room = per_user_spark.get_room(spark_id=pin['roomId'])
                     if not person or not room:
-                        logging.warn('Not able to retrieve person and room data for pinned message')
+                        logging.warning('Not able to retrieve person and room data for pinned message')
                         per_user_spark.post_bot_message(
                             email=email_owner,
                             text="You had a pinned reminder, but it was not possible to retrieve details."
@@ -241,7 +243,8 @@ class WebexTeamsMessageHandler:
             return None
         else:
             self.spark.me.set_property('autoreplyMsg-last', self.spark.person_object.lower())
-        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + self.spark.me.get_property('autoreplyMsg').value
+        return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + \
+               self.spark.me.get_property('autoreplyMsg').value
 
     def message_autoreply(self):
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
@@ -494,7 +497,7 @@ class WebexTeamsMessageHandler:
         if len(self.spark.msg_list) < 3 and not (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'list'):
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="Usage: `/manageteam add|remove|list <teamname> <email(s)>` where emails are"
+                text="Usage: `/manageteam add|remove|list|delete <teamname> <email(s)>` where emails are"
                      " comma-separated\n\n"
                      "Use `/manageteam list` to list all teams",
                 markdown=True)
@@ -697,8 +700,8 @@ class WebexTeamsMessageHandler:
                 }
             proxy.change_resource(path='resources/folders/' + room["boxFolderId"], params=params)
             if proxy.last_response_code < 200 or proxy.last_response_code > 299:
-                logging.warn('Unable to add/remove collaborator(' + self.spark.person_object +
-                             ') to Box folder(' + room["boxFolderId"] + ')')
+                logging.warning('Unable to add/remove collaborator(' + self.spark.person_object +
+                                ') to Box folder(' + room["boxFolderId"] + ')')
             else:
                 logging.debug('Added/removed collaborator(' + self.spark.person_object +
                               ') to Box folder(' + room["boxFolderId"] + ')')
@@ -812,13 +815,19 @@ class WebexTeamsMessageHandler:
                     text="Usage: `/checkmember <email>` to check room memberships for the email",
                     markdown=True)
                 return
+            if not fargate.in_fargate():
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="You requested a tough task! I will call upon one of my workers to check memberships...",
+                    markdown=True)
+                fargate.fork_container(self.webobj.request, self.spark.actor_id)
             else:
                 target = self.spark.msg_list[1]
-            self.spark.link.post_bot_message(
-                email=self.spark.me.creator,
-                text="**Room memberships for " + target + "**\n\n----\n\n",
-                markdown=True)
-            self.check_member(target)
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="**Room memberships for " + target + "**\n\n----\n\n",
+                    markdown=True)
+                self.check_member(target)
         elif self.spark.cmd == '/deletemember':
             if len(self.spark.msg_list) < 3:
                 self.spark.link.post_bot_message(
@@ -966,7 +975,7 @@ class WebexTeamsMessageHandler:
                     continue
                 pin = self.spark.link.get_message(spark_id=m["id"])
                 if not pin:
-                    logging.warn('Not able to retrieve message data for pinned message ')
+                    logging.warning('Not able to retrieve message data for pinned message ')
                     self.spark.link.post_bot_message(
                         email=self.spark.me.creator,
                         text="Not possible to retrieve pinned message details."
@@ -975,7 +984,7 @@ class WebexTeamsMessageHandler:
                 person = self.spark.link.get_person(spark_id=pin['personId'])
                 room = self.spark.link.get_room(spark_id=pin['roomId'])
                 if not person or not room:
-                    logging.warn('Not able to retrieve person and room data for pinned message')
+                    logging.warning('Not able to retrieve person and room data for pinned message')
                     self.spark.link.post_bot_message(
                         email=self.spark.me.creator,
                         text="Not possible to retrieve pinned message person and room details."
@@ -1048,10 +1057,9 @@ class WebexTeamsMessageHandler:
                     nr = None
             else:
                 nr = 0
-            if nr > 10:
+            max_back = 10
+            if nr and nr > 10:
                 max_back = nr + 1
-            else:
-                max_back = 10
             targettime = None
             comment = None
             if len(self.spark.msg_list) > 2:
@@ -1167,13 +1175,13 @@ class WebexTeamsMessageHandler:
                     spark_id=self.spark.room_id, text="Public URI: " + self.spark.config.root +
                     self.spark.me.id + '/callbacks/joinroom?id=' + uuid)
         elif self.spark.cmd == '/makeprivate':
-            if not self.spark.store.delete_from_room(self.spark.room_id, uuid=True):
+            if not self.spark.store.delete_from_room(self.spark.room_id, del_uuid=True):
                 self.spark.link.post_message(
-                    id=self.spark.room_id,
+                    spark_id=self.spark.room_id,
                     text="Failed to make room private.")
             else:
                 self.spark.link.post_message(
-                    id=self.spark.room_id,
+                    spark_id=self.spark.room_id,
                     text="Made room private and add URL will not work anymore.")
         elif self.spark.cmd == '/listroom':
             self.spark.link.delete_message(self.spark.object_id)
@@ -1183,7 +1191,7 @@ class WebexTeamsMessageHandler:
             for key in self.spark.room_data:
                 msg = msg + "**" + str(key) + "**: " + str(self.spark.room_data[key]) + "\n\n"
                 if key == 'id':
-                    id2 = base64.b64decode(self.spark.room_data[key]).split("ROOM/")
+                    id2 = base64.b64decode(self.spark.room_data[key].encode('utf-8')).decode('utf-8').split("ROOM/")
                     if len(id2) >= 2:
                         msg = msg + "**Web URL**:" + " https://web.ciscospark.com/rooms/" + id2[1] + "\n\n"
             if len(msg) > 0:
@@ -1209,7 +1217,7 @@ class WebexTeamsMessageHandler:
                         for f in msg['files']:
                             details = self.spark.link.get_attachment_details(f)
                             if 'content-disposition' in details:
-                                filename = re.search(ur"filename[^;\n=]*=(['\"])*(?:utf-8\'\')?(.*)(?(1)\1|)",
+                                filename = re.search(r"filename[^;\n=]*=(['\"])*(?:utf-8\'\')?(.*)(?(1)\1|)",
                                                      details['content-disposition']).group(2)
                             else:
                                 filename = 'unknown'
