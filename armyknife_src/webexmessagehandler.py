@@ -1038,6 +1038,48 @@ class WebexTeamsMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Deleted your box service.")
+        elif self.spark.cmd == '/app':
+            if len(self.spark.msg_list) > 1:
+                apptype = self.spark.msg_list[1]
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: /app <apptype>, e.g. /app googlemail")
+                return
+            app = self.spark.me.get_peer_trustee(shorttype=apptype)
+            sub = self.spark.me.create_remote_subscription(
+                peerid=app['peerid'],
+                target='properties',
+                subtarget='new',
+                granularity='high')
+            if sub:
+                logging.debug('Created a new subscription at ' + sub)
+            if not app or not sub:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Failed to create new application of type " + apptype + '.')
+                return
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="Your app is available and can be authorized at " + app['baseuri'] +
+                     "/www\n\n" +
+                     "Then use /appconfig to configure it.")
+        elif self.spark.cmd == '/noapp':
+            if len(self.spark.msg_list) > 1:
+                apptype = self.spark.msg_list[1]
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: /app <apptype>, e.g. /app googlemail")
+                return
+            if not self.spark.me.delete_peer_trustee(shorttype=apptype):
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Failed to delete " + apptype + " service.")
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Deleted your " + apptype + " service.")
 
     def all_rooms_commands(self):
         if self.spark.cmd == '/pin':
@@ -1257,7 +1299,7 @@ class WebexTeamsMessageHandler:
                 logging.info("Not able to retrieve members for room in /listmembers")
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="Net able to retrieve members in room to list members.")
+                    text="Not able to retrieve members in room to list members.")
                 return
             memberlist = ""
             sep = ""

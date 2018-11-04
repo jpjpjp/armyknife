@@ -325,21 +325,34 @@ class OnAWWebexTeams(on_aw.OnAWBase):
         logging.debug("Got callback and processed " + sub["subscriptionid"] +
                       " subscription from peer " + peerid + " with json blob: " + json.dumps(data))
         if 'target' in data and data['target'] == 'properties':
-            if 'subtarget' in data and data['subtarget'] == 'topofmind' and 'data' in data:
-                topofmind = data['data']
-                toplist = topofmind['list']
-                if len(toplist) == 0:
-                    spark.link.post_bot_message(
-                        email=spark.me.creator,
-                        text=topofmind['displayName'] + " (" + topofmind['email'] + ") just cleared " +
-                        topofmind['title'], markdown=True)
-                    return True
-                out = topofmind['displayName'] + " (" + topofmind['email'] + ") just updated " + topofmind[
-                    'title'] + "\n\n----\n\n"
-                for i, el in sorted(toplist.items()):
-                    out = out + "**" + i + "**: " + el + "\n\n"
-                spark.link.post_bot_message(email=spark.me.creator, text=out, markdown=True)
-            return True
+            if 'subtarget' in data:
+                if data['subtarget'] == 'topofmind' and 'data' in data:
+                    topofmind = data['data']
+                    toplist = topofmind['list']
+                    if len(toplist) == 0:
+                        spark.link.post_bot_message(
+                            email=spark.me.creator,
+                            text=topofmind['displayName'] + " (" + topofmind['email'] + ") just cleared " +
+                            topofmind['title'], markdown=True)
+                        return True
+                    out = topofmind['displayName'] + " (" + topofmind['email'] + ") just updated " + topofmind[
+                        'title'] + "\n\n----\n\n"
+                    for i, el in sorted(toplist.items()):
+                        out = out + "**" + i + "**: " + el + "\n\n"
+                    spark.link.post_bot_message(email=spark.me.creator, text=out, markdown=True)
+                elif data['subtarget'] == 'new' and 'data' in data:
+                    out = '#Incoming email(s):  \n'
+                    for k, v in data['data'].items():
+                        h = v['headers']
+                        out += '**From: ' + h['From'][0] + '**  \n'
+                        out += 'Subject: ' + h['Subject'][0] + '  \n'
+                        out += v['snippet'] + '\n\n---\n\n'
+                        if len(out)>4000:
+                            spark.link.post_bot_message(email=spark.me.creator, text=out, markdown=True)
+                            out = ''
+                    if out:
+                        spark.link.post_bot_message(email=spark.me.creator, text=out, markdown=True)
+                return True
         if 'resource' in data:
             folder_id = data['resource']
             room = spark.store.load_room_by_boxfolder_id(folder_id=folder_id)

@@ -42,6 +42,11 @@ def get_config():
         'refresh_type': "refresh_token",
     }
     actors = {
+        'googlemail': {
+            'type': 'urn:actingweb:apps.actingweb.io:googlemail',
+            'factory': 'https://apps.actingweb.io/googlemail/',
+            'relationship': 'friend',
+        },
         'boxbasic': {
             'type': 'urn:actingweb:actingweb.org:boxbasic',
             'factory': 'https://box-spark-dev.appspot.com/',
@@ -229,6 +234,8 @@ class Handler:
             elif self.method == 'PUT':
                 self.handler.put(**kwargs)
         except AttributeError:
+            return False
+        if self.get_status() == 404:
             return False
         return True
 
