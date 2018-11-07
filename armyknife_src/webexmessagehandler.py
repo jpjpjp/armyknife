@@ -1402,7 +1402,7 @@ class WebexTeamsMessageHandler:
                             text="Unknown error trying to create Box root folder.")
                     return
             room = self.spark.store.load_room(self.spark.room_id)
-            if room and len(room["boxFolderId"]) > 0:
+            if room and len(room.get("boxFolderId", '')) > 0:
                 folder = proxy.get_resource('resources/folders/' + room["boxFolderId"])
                 if folder and 'url' in folder:
                     self.spark.link.post_message(
@@ -1476,7 +1476,7 @@ class WebexTeamsMessageHandler:
             else:
                 box = self.spark.me.get_peer_trustee(shorttype='boxbasic')
                 proxy = aw_proxy.AwProxy(peer_target=box, config=self.spark.config)
-                if not proxy.delete_resource('resources/folders/' + room["boxFolderId"]):
+                if "boxFolderId" in room and not proxy.delete_resource('resources/folders/' + room["boxFolderId"]):
                     self.spark.link.post_message(
                         spark_id=self.spark.room_id,
                         text="Failed to disconnect the Box folder from this room.")

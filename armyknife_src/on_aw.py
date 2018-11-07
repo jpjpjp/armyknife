@@ -324,6 +324,10 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             config=self.config)
         logging.debug("Got callback and processed " + sub["subscriptionid"] +
                       " subscription from peer " + peerid + " with json blob: " + json.dumps(data))
+        app_disabled = spark.me.get_property('app_disabled').value
+        if app_disabled and app_disabled.lower() == 'true':
+            logging.debug("Account is disabled: " + spark.me.creator)
+            return True
         if 'target' in data and data['target'] == 'properties':
             if 'subtarget' in data:
                 if data['subtarget'] == 'topofmind' and 'data' in data:
