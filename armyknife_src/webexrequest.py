@@ -170,7 +170,7 @@ class WebexTeamsRequest:
         if what == 'me' and not self.actor_data:
             self.actor_data = self.link.get_me()
             if self.me and not self.actor_data or 'displayName' not in self.actor_data:
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve personal (me) data to enrich "
                               "from Army Knife. Code(" + str(last_err['code']) +
@@ -181,7 +181,7 @@ class WebexTeamsRequest:
         if what == 'person' and not self.person_data and self.person_id:
             self.person_data = self.link.get_person(self.person_id)
             if self.me and not self.person_data:
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve person data to enrich from Army Knife. Code(" + str(
                         last_err['code']) +
@@ -197,7 +197,7 @@ class WebexTeamsRequest:
         if what == 'room' and not self.room_data and self.room_id:
             self.room_data = self.link.get_room(self.room_id)
             if self.me and not self.room_data or 'title' not in self.room_data:
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 self.room_type = ''
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve room data to enrich from Army Knife. Code(" + str(
@@ -211,16 +211,16 @@ class WebexTeamsRequest:
         if what == 'msg' and not self.msg_data and self.object_id:
             self.msg_data = self.link.get_message(self.object_id)
             if self.me and (not self.msg_data or 'text' not in self.msg_data):
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve message data to enrich from Army Knife. Code(" + str(
                         last_err['code']) +
                     ") - " + last_err['message'].decode('utf-8'))
                 if last_err['code'] == 400:
                     now = datetime.datetime.utcnow()
-                    token_invalid = self.me.get_property('token_invalid').value
+                    token_invalid = self.me.property.token_invalid
                     if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
-                        self.me.set_property('token_invalid', now.strftime("%Y%m%d"))
+                        self.me.property.token_invalid = now.strftime("%Y%m%d")
                         self.link.post_bot_message(
                             email=self.me.creator,
                             text="Your Army Knife Army Knife account has no longer access. Please type "
@@ -251,9 +251,9 @@ class WebexTeamsRequest:
             elif '/' in self.cmd:
                 logging.debug('Received command from unknown user: ' + self.cmd)
         if what == 'account' and not self.chat_room_id and self.me:
-            self.chat_room_id = self.me.get_property('chatRoomId').value
-            self.actor_spark_id = self.me.get_property('oauthId').value
-            self.service_status = self.me.get_property('service_status').value
+            self.chat_room_id = self.me.property.chatRoomId
+            self.actor_spark_id = self.me.property.oauthId
+            self.service_status = self.me.property.service_status
             logging.debug("Enriched with ArmyKnife user data (chatroom_id:" + (self.chat_room_id or '-') +
                           ") (spark_id:" + (self.actor_spark_id or '') + ") (service_status:" +
                           (self.service_status or '') + ")")

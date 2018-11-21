@@ -21,7 +21,7 @@ class WebexTeamsBotHandler:
             self.spark.me.create(url=self.spark.config.root, creator=self.spark.person_object,
                                  passphrase=self.spark.config.new_token(), delete=True)
         url = self.spark.config.root + self.spark.me.id
-        self.spark.me.set_property('chatRoomId', self.spark.room_id)
+        self.spark.me.property.chatRoomId = self.spark.room_id
         if not self.spark.is_actor_user:
             self.spark.link.post_message(
                 self.spark.room_id,
@@ -133,7 +133,7 @@ class WebexTeamsBotHandler:
             out = ""
         for u in users:
             a = actor.Actor(actor_id=u["id"], config=self.spark.config)
-            service_status = a.get_property('service_status').value
+            service_status = a.property.service_status
             counters["total"] += 1
             if str(service_status) in counters:
                 counters[str(service_status)] += 1
@@ -142,7 +142,7 @@ class WebexTeamsBotHandler:
             if cmd == "list":
                 out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
             elif 'filter' in cmd:
-                attr = a.get_property(str(msg_filter)).value
+                attr = a.property[str(msg_filter)]
                 if not attr and filter_value and filter_value == "None":
                     attr = "None"
                 if attr and (not filter_value or (filter_value and filter_value in attr)):
@@ -154,17 +154,17 @@ class WebexTeamsBotHandler:
                         out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
                     elif cmd == "markfilter":
                         out += a.creator + " marked.\n\n"
-                        a.set_property('filter_mark', 'true')
+                        a.property.filter_mark = 'true'
             elif cmd == "marked-clear":
-                attr = a.get_property('filter_mark').value
+                attr = a.property['filter_mark']
                 if attr and attr == 'true':
-                    a.delete_property('filter_mark')
+                    a.property.filter_mark = None
                     if 'marked-cleared' in counters:
                         counters["marked-cleared"] += 1
                     else:
                         counters["marked-cleared"] = 1
             elif cmd == "marked-list":
-                attr = a.get_property('filter_mark').value
+                attr = a.property['filter_mark']
                 if attr and attr == 'true':
                     out += a.creator + " (" + a.id + ")\n\n"
                     if 'marked-list' in counters:
@@ -172,12 +172,12 @@ class WebexTeamsBotHandler:
                     else:
                         counters["marked-list"] = 1
             elif cmd == "marked-message":
-                attr = a.get_property('filter_mark').value
+                attr = a.property['filter_mark']
                 if attr and attr == 'true':
-                    no_alert = a.get_property('no_announcements').value
+                    no_alert = a.property.no_announcements
                     if not no_alert or no_alert != "true":
                         self.spark.link.post_bot_message(
-                            email=a.get_property('email').value,
+                            email=a.store.email,
                             text=msg_markdown,
                             markdown=True)
                         if 'marked-messaged' in counters:
@@ -185,7 +185,7 @@ class WebexTeamsBotHandler:
                         else:
                             counters["marked-messaged"] = 1
             elif cmd == "marked-delete":
-                attr = a.get_property('filter_mark').value
+                attr = a.property.filter_mark
                 if attr and attr == 'true':
                     out += a.creator + " deleted.\n\n"
                     a.delete()
@@ -432,7 +432,7 @@ class WebexTeamsBotHandler:
                         text=tracker["email"] + ' (' + tracker["nickname"] + ')')
 
     def topofmind_commands(self):
-        topofmind = self.spark.me.get_property('topofmind').value
+        topofmind = self.spark.me.property.topofmind
         if topofmind:
             try:
                 topofmind = json.loads(topofmind, strict=False)
@@ -441,7 +441,7 @@ class WebexTeamsBotHandler:
                 toplist = {}
         else:
             toplist = {}
-            topofmind = {'email': self.spark.me.creator, 'displayName': self.spark.me.get_property('displayName').value,
+            topofmind = {'email': self.spark.me.creator, 'displayName': self.spark.me.property.displayName,
                          'title': "Top of Mind List"}
         # Handle no params
         if len(self.spark.msg_list) == 1 or (len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'help'):
@@ -454,7 +454,7 @@ class WebexTeamsBotHandler:
                 return
             else:
                 out = "**" + topofmind['title'] + "**"
-                modified = self.spark.me.get_property('topofmind_modified').value
+                modified = self.spark.me.property.topofmind_modified
                 if modified:
                     timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                     out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -469,8 +469,8 @@ class WebexTeamsBotHandler:
         # Handle more than one param
         index = self.spark.msg_list_wcap[1]
         if index == "clear":
-            self.spark.me.delete_property('topofmind')
-            self.spark.me.delete_property('topofmind_modified')
+            self.spark.me.property.topofmind = None
+            self.spark.me.property.topofmind_modified = None
             topofmind['list'] = {}
             out = json.dumps(topofmind)
             self.spark.me.register_diffs(target='properties', subtarget='topofmind', blob=out)
@@ -512,7 +512,7 @@ class WebexTeamsBotHandler:
                                  len(self.spark.msg_list_wcap[0]) +
                                  len(self.spark.msg_list_wcap[1]) + 2:]
             out = json.dumps(topofmind, ensure_ascii=False)
-            self.spark.me.set_property('topofmind', out)
+            self.spark.me.property.topofmind = out
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Set top of mind list title to " + topofmind['title'])
@@ -549,7 +549,7 @@ class WebexTeamsBotHandler:
                        len(self.spark.msg_list_wcap[0]) +
                        len(self.spark.msg_list_wcap[1]) + 2:]
             now = datetime.datetime.utcnow()
-            self.spark.me.set_property('topofmind_modified', now.strftime('%Y-%m-%d %H:%M'))
+            self.spark.me.property.topofmind_modified = now.strftime('%Y-%m-%d %H:%M')
             if listitem == "delete":
                 del (toplist[index])
                 self.spark.link.post_bot_message(
@@ -595,12 +595,12 @@ class WebexTeamsBotHandler:
                     markdown=True)
             topofmind['list'] = toplist
             out = json.dumps(topofmind, sort_keys=True, ensure_ascii=False)
-            self.spark.me.set_property('topofmind', out)
+            self.spark.me.property.topofmind = out
             self.spark.me.register_diffs(target='properties', subtarget='topofmind', blob=out)
             # List out the updated list
             toplist = json.loads(out, strict=False)['list']
             out = "**" + topofmind['title'] + "**"
-            modified = self.spark.me.get_property('topofmind_modified').value
+            modified = self.spark.me.property.topofmind_modified
             if modified:
                 timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                 out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -613,7 +613,7 @@ class WebexTeamsBotHandler:
                 markdown=True)
 
     def todo_commands(self):
-        todo = self.spark.me.get_property('todo').value
+        todo = self.spark.me.property.todo
         if todo:
             try:
                 todo = json.loads(todo, strict=False)
@@ -624,7 +624,7 @@ class WebexTeamsBotHandler:
                 toplist = {}
         else:
             toplist = {}
-            todo = {'email': self.spark.me.creator, 'displayName': self.spark.me.get_property('displayName').value,
+            todo = {'email': self.spark.me.creator, 'displayName': self.spark.me.property.displayName,
                     'title': "Todo List"}
             if self.spark.cmd == '/followup' or self.spark.cmd == '/fu':
                 todo['title'] = "FollowUp List"
@@ -644,7 +644,7 @@ class WebexTeamsBotHandler:
                 return
             else:
                 out = "**" + todo['title'] + "**"
-                modified = self.spark.me.get_property('todo_modified').value
+                modified = self.spark.me.property.todo_modified
                 if modified:
                     timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                     out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -659,8 +659,8 @@ class WebexTeamsBotHandler:
         # Handle more than one param
         cmd = self.spark.msg_list[1]
         if cmd == "clear":
-            self.spark.me.delete_property('todo')
-            self.spark.me.delete_property('todo_modified')
+            self.spark.me.property.todo = None
+            self.spark.me.property.todo_modified = None
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Cleared your " + todo['title'])
@@ -693,7 +693,7 @@ class WebexTeamsBotHandler:
                     text="Deleted daily reminder of " + todo['title'])
             return
         now = datetime.datetime.now()
-        self.spark.me.set_property('todo_modified', now.strftime('%Y-%m-%d %H:%M'))
+        self.spark.me.property.todo_modified = now.strftime('%Y-%m-%d %H:%M')
         if self.spark.cmd == "/done":
             try:
                 index = int(self.spark.msg_list[1])
@@ -729,10 +729,10 @@ class WebexTeamsBotHandler:
                 markdown=True)
         todo['list'] = toplist
         out = json.dumps(todo, sort_keys=True, ensure_ascii=False)
-        self.spark.me.set_property('todo', out)
+        self.spark.me.property.todo = out
         # List out the updated list
         out = "**" + todo['title'] + "**"
-        modified = self.spark.me.get_property('todo_modified').value
+        modified = self.spark.me.property.todo_modified
         if modified:
             timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
             out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -776,7 +776,7 @@ class WebexTeamsBotHandler:
             return
         elif self.spark.cmd == '/enable':
             logging.debug("Enabling account: " + self.spark.me.creator)
-            self.spark.me.delete_property('app_disabled')
+            self.spark.me.property.app_disabled = None
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="The Army Knife has now been enabled and will "
@@ -788,13 +788,13 @@ class WebexTeamsBotHandler:
                 text="Not able to find you as a user. Please do /init",
                 markdown=True)
             return
-        app_disabled = self.spark.me.get_property('app_disabled').value
+        app_disabled = self.spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
             return
         if self.spark.cmd == '/disable':
             logging.debug("Disabling account: " + self.spark.me.creator)
-            self.spark.me.set_property('app_disabled', 'true')
+            self.spark.me.property.app_disabled = 'true'
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="The Army Knife has now been disabled and will"
@@ -810,7 +810,7 @@ class WebexTeamsBotHandler:
                 text="/myself has been replaced with /me",
                 markdown=True)
         elif self.spark.cmd == '/me':
-            firehose = self.spark.me.get_property('firehoseId').value
+            firehose = self.spark.me.property.firehoseId
             if not firehose:
                 firehose = "<none>"
             self.spark.link.post_bot_message(
@@ -873,44 +873,44 @@ class WebexTeamsBotHandler:
                 self.spark.person_object)
         elif self.spark.cmd == '/autoreply':
             reply_msg = self.spark.msg_data['text'][len(self.spark.msg_list[0]):]
-            self.spark.me.set_property('autoreplyMsg', reply_msg)
+            self.spark.me.property.autoreplyMsg = reply_msg
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Auto-reply message set to: " +
                      reply_msg + "\n\n@mentions and messages in direct rooms will now return your message.",
                 markdown=True)
         elif self.spark.cmd == '/noautoreply':
-            self.spark.me.delete_property('autoreplyMsg')
+            self.spark.me.property.autoreplyMsg = None
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Auto-reply message off.")
         elif self.spark.cmd == '/nomentionalert':
-            self.spark.me.set_property('no_mentions', 'true')
+            self.spark.me.property.no_mentions = 'true'
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Alerts in the bot room for @mentions is turned off.")
         elif self.spark.cmd == '/mentionalert':
-            self.spark.me.delete_property('no_mentions')
+            self.spark.me.property.no_mentions = None
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Alerts in the bot room for @mentions is turned on.")
         elif self.spark.cmd == '/noroomalert':
-            self.spark.me.set_property('no_newrooms', 'true')
+            self.spark.me.property.no_newrooms = 'true'
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Alerts in the bot room for new rooms is turned off.")
         elif self.spark.cmd == '/roomalert':
-            self.spark.me.delete_property('no_newrooms')
+            self.spark.me.property.no_newrooms = None
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="Alerts in the bot room for new rooms is turned on.")
         elif self.spark.cmd == '/noannouncements':
-            self.spark.me.set_property('no_announcements', 'true')
+            self.spark.me.property.no_announcements = 'true'
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="You will no longer get Army Knife announcements.")
         elif self.spark.cmd == '/announcements':
-            self.spark.me.delete_property('no_announcements')
+            self.spark.me.property.no_announcements = None
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="You will now get Army Knife announcements!")

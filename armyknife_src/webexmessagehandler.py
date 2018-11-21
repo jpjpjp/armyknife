@@ -112,8 +112,8 @@ class WebexTeamsMessageHandler:
             per_user_auth = auth.Auth(actor_id=m["actor_id"], config=self.spark.config)
             per_user_spark = ciscowebexteams.CiscoWebexTeams(auth=per_user_auth, actor_id=m["actor_id"],
                                                              config=self.spark.config)
-            email_owner = pin_owner.get_property(name='email').value
-            app_disabled = pin_owner.get_property('app_disabled').value
+            email_owner = pin_owner.store.email
+            app_disabled = pin_owner.property.app_disabled
             if app_disabled and app_disabled.lower() == 'true':
                 logging.debug("Account is disabled: " + email_owner)
                 continue
@@ -122,7 +122,7 @@ class WebexTeamsMessageHandler:
                 m["comment"] = "ARMY KNIFE REMINDER"
             # handle top of mind reminders first, marked with a special comment
             if m["comment"] == '#/TOPOFMIND':
-                topofmind = pin_owner.get_property('topofmind').value
+                topofmind = pin_owner.property.topofmind
                 if topofmind:
                     try:
                         topofmind = json.loads(topofmind, strict=False)
@@ -133,7 +133,7 @@ class WebexTeamsMessageHandler:
                     toplist = None
                 if toplist:
                     out = "**Your Daily Top of Mind Reminder**"
-                    modified = pin_owner.get_property('topofmind_modified').value
+                    modified = pin_owner.property.topofmind_modified
                     if modified:
                         timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -148,7 +148,7 @@ class WebexTeamsMessageHandler:
                 targettime = m["timestamp"] + datetime.timedelta(days=1)
                 per_user_store.save_pinned_message(comment='#/TOPOFMIND', timestamp=targettime)
             elif m["comment"] == '#/TODO':
-                todo = pin_owner.get_property('todo').value
+                todo = pin_owner.property.todo
                 if todo:
                     try:
                         todo = json.loads(todo, strict=False)
@@ -161,7 +161,7 @@ class WebexTeamsMessageHandler:
                     toplist = None
                 if toplist:
                     out = "**" + todo['title'] + "**"
-                    modified = pin_owner.get_property('todo_modified').value
+                    modified = pin_owner.property.todo_modified
                     if modified:
                         timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -211,17 +211,17 @@ class WebexTeamsMessageHandler:
 
     def validate_token(self):
         now = datetime.datetime.utcnow()
-        service_status = self.spark.me.get_property('service_status').value
+        service_status = self.spark.me.property.service_status
         if not service_status:
-            self.spark.me.set_property('service_status', 'firehose')
+            self.spark.me.property.service_status = 'firehose'
         # validate_oauth_token() returns the redirect URL if token cannot be refreshed
         if len(self.spark.auth.validate_oauth_token(lazy=True)) > 0:
             if not service_status or service_status != 'invalid':
-                self.spark.me.set_property('service_status', 'invalid')
+                self.spark.me.property.service_status = 'invalid'
             logging.info("Was not able to automatically refresh token.")
-            token_invalid = self.spark.me.get_property('token_invalid').value
+            token_invalid = self.spark.me.property.token_invalid
             if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
-                self.spark.me.set_property('token_invalid', now.strftime("%Y%m%d"))
+                self.spark.me.property.token_invalid = now.strftime("%Y%m%d")
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Your Army Knife account has no longer access. Please type "
@@ -235,23 +235,23 @@ class WebexTeamsMessageHandler:
             return
 
     def get_autoreply_msg(self):
-        if not self.spark.me.get_property('autoreplyMsg').value:
+        if not self.spark.me.property.autoreplyMsg:
             return None
         # Retrieve the last user we responded to and don't reply if it's the same user
-        last_auto_reply = self.spark.me.get_property('autoreplyMsg-last').value
+        last_auto_reply = self.spark.me.property.autoreplyMsg_last
         if last_auto_reply and last_auto_reply == self.spark.person_object.lower():
             return None
         else:
-            self.spark.me.set_property('autoreplyMsg-last', self.spark.person_object.lower())
+            self.spark.me.property.autoreplyMsg_last = self.spark.person_object.lower()
         return "Via " + self.spark.config.bot['email'] + " auto-reply:\n\n" + \
-               self.spark.me.get_property('autoreplyMsg').value
+               self.spark.me.property.autoreplyMsg
 
     def message_autoreply(self):
         if self.spark.room_type == 'direct' and self.spark.person_object.lower() != self.spark.me.creator.lower():
             reply_msg = self.get_autoreply_msg()
             if not reply_msg:
                 return
-            app_disabled = self.spark.me.get_property('app_disabled').value
+            app_disabled = self.spark.me.property.app_disabled
             if app_disabled and app_disabled.lower() == 'true':
                 logging.debug("Account is disabled: " + self.spark.me.creator)
                 return
@@ -292,12 +292,12 @@ class WebexTeamsMessageHandler:
                 return
             if not self.spark.enrich_data('room'):
                 return
-            app_disabled = self.spark.me.get_property('app_disabled').value
+            app_disabled = self.spark.me.property.app_disabled
             if app_disabled and app_disabled.lower() == 'true':
                 logging.debug("Account is disabled: " + self.spark.me.creator)
                 return
             if 'title' in self.spark.room_data and 'text' in self.spark.msg_data:
-                no_alert = self.spark.me.get_property('no_mentions').value
+                no_alert = self.spark.me.property.no_mentions
                 if not no_alert or no_alert.lower() != 'true':
                     mentioner = self.spark.link.get_person(spark_id=self.spark.person_id)
                     if 'displayName' not in mentioner:
@@ -323,7 +323,7 @@ class WebexTeamsMessageHandler:
             message = self.spark.msg_data['text']
         tokens = message.split(' ')
         if tokens[0] == '/topofmind' or tokens[0] == '/tom':
-            topofmind = self.spark.me.get_property('topofmind').value
+            topofmind = self.spark.me.property.topofmind
             toplist = None
             if topofmind:
                 try:
@@ -334,7 +334,7 @@ class WebexTeamsMessageHandler:
             if len(tokens) == 1:
                 if toplist and len(toplist) > 0:
                     out = "**" + topofmind['title'] + " for " + user_name + "**"
-                    modified = self.spark.me.get_property('topofmind_modified').value
+                    modified = self.spark.me.property.topofmind_modified
                     if modified:
                         timestamp = datetime.datetime.strptime(modified, "%Y-%m-%d %H:%M")
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
@@ -355,7 +355,7 @@ class WebexTeamsMessageHandler:
                 # self.spark.person_object is the person wanting to subscribe
                 subscriber_email = self.spark.person_object
                 subscriber = actor.Actor(config=self.spark.config)
-                subscriber.get_from_property(name='email', value=subscriber_email)
+                subscriber.get_from_creator(subscriber_email)
                 if not subscriber.id:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
@@ -410,7 +410,7 @@ class WebexTeamsMessageHandler:
                 # self.spark.person_object is the person wanting to unsubscribe
                 subscriber_email = self.spark.person_object
                 subscriber = actor.Actor(config=self.spark.config)
-                subscriber.get_from_property(name='email', value=subscriber_email)
+                subscriber.get_from_creator(subscriber_email)
                 if not subscriber.id:
                     self.spark.link.post_bot_message(
                         email=subscriber_email,
@@ -458,7 +458,7 @@ class WebexTeamsMessageHandler:
         if "@sparkbot.io" in self.spark.person_object.lower() or \
                 "@webex.bot" in self.spark.person_object.lower():
             return
-        app_disabled = self.spark.me.get_property('app_disabled').value
+        app_disabled = self.spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
             return
@@ -540,7 +540,7 @@ class WebexTeamsMessageHandler:
                                                  2:].replace(" ", "").split(',')
         else:
             emails = []
-        team_str = self.spark.me.get_property('team-' + team_name).value
+        team_str = self.spark.me.property['team-' + team_name]
         team_list = self.extract_teamlist(team_str)
         out = ''
         if len(team_list) == 0 and team_cmd == 'list':
@@ -555,7 +555,7 @@ class WebexTeamsMessageHandler:
                 out += "Use remove to remove an email address from a team. Delete is to delete an entire team!\n\n"
             else:
                 out += "Deleted team " + team_name + "\n\n"
-                self.spark.me.delete_property('team-' + team_name)
+                self.spark.me.property['team-' + team_name] = None
             team_list = []
         elif team_str and team_str[0:1] == '#':
             out += "This team is linked to a room, so only /manageteam list and delete commands are allowed."
@@ -575,7 +575,7 @@ class WebexTeamsMessageHandler:
                         team_list.remove(str(e.strip()))
                         out += "Removed " + e + "\n\n"
         if len(team_list) > 0:
-            self.spark.me.set_property('team-' + team_name, json.dumps(team_list))
+            self.spark.me.property['team-' + team_name] = json.dumps(team_list)
         if len(out) > 0:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
@@ -591,7 +591,7 @@ class WebexTeamsMessageHandler:
             return
         team_cmd = self.spark.msg_list[1]
         team_name = self.spark.msg_list[2]
-        team_str = self.spark.me.get_property('team-' + team_name).value
+        team_str = self.spark.me.property['team-' + team_name]
         team_list = self.extract_teamlist(team_str)
         if not self.spark.enrich_data('room'):
             return
@@ -618,10 +618,10 @@ class WebexTeamsMessageHandler:
                 out += "Added " + m['personEmail'] + "\n\n"
                 team_list.append(str(m['personEmail']))
             if len(team_list) > 0:
-                self.spark.me.set_property('team-' + team_name, json.dumps(team_list))
+                self.spark.me.property['team-' + team_name] = json.dumps(team_list)
         elif team_cmd == 'link':
             if 'id' in self.spark.room_data:
-                self.spark.me.set_property('team-' + team_name, '#' + self.spark.room_id)
+                self.spark.me.property['team-' + team_name] = '#' + self.spark.room_id
                 out = "**Linked team " + team_name + " to members of room " + title + "**\n\n"
             else:
                 out = "Error in getting room data.\n\n"
@@ -664,7 +664,7 @@ class WebexTeamsMessageHandler:
             markdown=True)
 
     def memberships_created(self):
-        app_disabled = self.spark.me.get_property('app_disabled').value
+        app_disabled = self.spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
             return
@@ -672,7 +672,7 @@ class WebexTeamsMessageHandler:
             return
         if self.spark.person_object == self.spark.me.creator:
             if 'title' in self.spark.room_data:
-                no_alert = self.spark.me.get_property('no_newrooms').value
+                no_alert = self.spark.me.property.no_newrooms
                 if not no_alert or no_alert.lower() != 'true':
                     self.spark.link.post_bot_message(email=self.spark.me.creator,
                                                      text="You were added to the room " + self.spark.room_data['title'])
@@ -765,7 +765,7 @@ class WebexTeamsMessageHandler:
                         text="Was not able to delete webhook: " + hook_id
                     )
         elif self.spark.cmd == '/cleanwebhooks':
-            self.spark.me.delete_property('firehoseId')
+            self.spark.me.property.firehoseId = None
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text="Started cleaning up ALL webhooks...")
@@ -781,7 +781,7 @@ class WebexTeamsMessageHandler:
                 )
             if hook and hook['id']:
                 logging.debug('Successfully registered messages firehose webhook')
-                self.spark.me.set_property('firehoseId', hook['id'])
+                self.spark.me.property.firehoseId = hook['id']
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Successfully created new Army Knife webhook.")
@@ -1005,7 +1005,7 @@ class WebexTeamsMessageHandler:
                     text="Failed to create new box service.")
                 return
             if len(self.spark.msg_list) > 1:
-                box_root_id = self.spark.me.get_property('boxRootId').value
+                box_root_id = self.spark.me.property.boxRootId
                 if box_root_id:
                     self.spark.link.post_bot_message(
                         email=self.spark.me.creator,
@@ -1014,10 +1014,10 @@ class WebexTeamsMessageHandler:
                     return
                 box_root = self.spark.msg_list_wcap[1]
             else:
-                box_root = self.spark.me.get_property('boxRoot').value
+                box_root = self.spark.me.property.boxRoot
                 if not box_root:
                     box_root = 'WebexTeamsRoomFolders'
-            self.spark.me.set_property('boxRoot', box_root)
+            self.spark.me.property.boxRoot = box_root
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
                 text="Your box service is available and can be authorized at " + box['baseuri'] +
@@ -1030,8 +1030,8 @@ class WebexTeamsMessageHandler:
                     email=self.spark.me.creator,
                     text="Failed to delete box service.")
             else:
-                self.spark.me.delete_property('boxRoot')
-                self.spark.me.delete_property('boxRootId')
+                self.spark.me.property.boxRoot = None
+                self.spark.me.propertyboxRootId = None
                 box_rooms = self.spark.store.load_rooms()
                 for b in box_rooms:
                     self.spark.store.delete_from_room(b.id, boxfolder=True)
@@ -1180,7 +1180,7 @@ class WebexTeamsMessageHandler:
                 listitem = msg_data['text']
             else:
                 listitem = "FAILED MSG RETRIEVAL"
-            todo = self.spark.me.get_property('todo').value
+            todo = self.spark.me.property.todo
             if todo:
                 try:
                     todo = json.loads(todo, strict=False)
@@ -1191,7 +1191,7 @@ class WebexTeamsMessageHandler:
                     toplist = {}
             else:
                 toplist = {}
-                todo = {'email': self.spark.me.creator, 'displayName': self.spark.me.get_property('displayName').value,
+                todo = {'email': self.spark.me.creator, 'displayName': self.spark.me.property.displayName,
                         'title': "Todo List"}
                 if self.spark.cmd == '/followup' or self.spark.cmd == '/fu':
                     todo['title'] = "FollowUp List"
@@ -1203,9 +1203,9 @@ class WebexTeamsMessageHandler:
                 markdown=True)
             todo['list'] = toplist
             out = json.dumps(todo, sort_keys=True, ensure_ascii=False)
-            self.spark.me.set_property('todo', out)
+            self.spark.me.property.todo = out
             now = datetime.datetime.now()
-            self.spark.me.set_property('todo_modified', now.strftime('%Y-%m-%d %H:%M'))
+            self.spark.me.property.todo_modified = now.strftime('%Y-%m-%d %H:%M')
         elif self.spark.cmd == '/makepublic':
             uuid = self.spark.store.add_uuid_to_room(self.spark.room_id)
             if not uuid:
@@ -1244,7 +1244,7 @@ class WebexTeamsMessageHandler:
                     markdown=True)
         elif self.spark.cmd == '/listfiles':
             self.spark.link.delete_message(self.spark.data['id'])
-            feature_toggles = self.spark.me.get_property('featureToggles').value
+            feature_toggles = self.spark.me.property.featureToggles
             msgs = self.spark.link.get_messages(spark_id=self.spark.room_id, max_msgs=200)
             if not self.spark.enrich_data('room'):
                 return
@@ -1359,7 +1359,7 @@ class WebexTeamsMessageHandler:
                 text="Created new room and added the same members as in that room.")
         elif self.spark.cmd == '/boxfolder':
             # box_root is set when issueing the /box command
-            box_root = self.spark.me.get_property('boxRoot').value
+            box_root = self.spark.me.property.boxRoot
             if not box_root or len(box_root) == 0:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
@@ -1369,7 +1369,7 @@ class WebexTeamsMessageHandler:
             box = self.spark.me.get_peer_trustee(shorttype='boxbasic')
             proxy = aw_proxy.AwProxy(peer_target=box, config=self.spark.config)
             # box_root_id is set the first time a /boxfolder command is run
-            box_root_id = self.spark.me.get_property('boxRootId').value
+            box_root_id = self.spark.me.property.boxRootId
             if not box_root_id:
                 # Create the root folder
                 params = {
@@ -1380,7 +1380,7 @@ class WebexTeamsMessageHandler:
                     params=params)
                 if root_folder and 'id' in root_folder:
                     box_root_id = root_folder['id']
-                    self.spark.me.set_property('boxRootId', box_root_id)
+                    self.spark.me.property.boxRootId = box_root_id
                 else:
                     if 'error' in root_folder and root_folder['error']['code'] == 401:
                         self.spark.link.post_bot_message(
@@ -1487,7 +1487,7 @@ class WebexTeamsMessageHandler:
                         text="Disconnected the Box folder from this room. The Box folder was not deleted.")
 
     def messages_created(self):
-        app_disabled = self.spark.me.get_property('app_disabled').value
+        app_disabled = self.spark.me.propert.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
             return
@@ -1507,7 +1507,7 @@ class WebexTeamsMessageHandler:
         if not self.spark.service_status or \
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
-            self.spark.me.set_property('service_status', 'active')
+            self.spark.me.property.service_status = 'active'
         if self.spark.room_id == self.spark.chat_room_id:
             # Commands run in the 1:1 bot room that need OAuth rights on behalf
             # of the user to execute

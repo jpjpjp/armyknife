@@ -7,8 +7,86 @@ from armyknife_src import webexbothandler
 from armyknife_src import webexmessagehandler
 from armyknife_src import fargate
 
+PROP_HIDE = [
+    "email",
+    "oauthId"
+]
+
+PROP_PROTECT = PROP_HIDE + [
+    "service_status"
+]
+
 
 class OnAWWebexTeams(on_aw.OnAWBase):
+
+    def get_properties(self, path: list, data: dict) -> dict or None:
+        """ Called on GET to properties for transformations to be done
+        :param path: Target path requested
+        :type path: list[str]
+        :param data: Data retrieved from data store to be returned
+        :type data: dict
+        :return: The transformed data to return to requestor or None if 404 should be returned
+        :rtype: dict or None
+        """
+        if not path:
+            for k, v in data.copy().items():
+                if k in PROP_HIDE:
+                    del data[k]
+        elif len(path) > 0 and path[0] in PROP_HIDE:
+            return None
+        return data
+
+    def delete_properties(self, path: list, old: dict, new: dict) -> bool:
+        """ Called on DELETE to properties
+        :param path: Target path to be deleted
+        :type path: list[str]
+        :param old: Property value that will be deleted (or changed)
+        :type old: dict
+        :param new: Property value after path has been deleted
+        :type new: dict
+        :return: True if DELETE is allowed, False if 403 should be returned
+        :rtype: bool
+        """
+        if len(path) > 0 and path[0] in PROP_PROTECT:
+            return False
+        return True
+
+    def put_properties(self, path: list, old: dict, new: dict) -> dict or None:
+        """ Called on PUT to properties for transformations to be done before save
+        :param path: Target path requested to be updated
+        :type path: list[str]
+        :param old: Old data from database
+        :type old: dict
+        :param new:
+        :type new: New data from PUT request (after merge)
+        :return: The dict that should be stored or None if 400 should be returned and nothing stored
+        :rtype: dict or None
+        """
+        if not path:
+            return None
+        elif len(path) > 0 and path[0] in PROP_PROTECT:
+            return None
+        if path and len(path) >= 1 and path[0] == 'config':
+            if 'watchLabels' in new:
+                new_labels = new['watchLabels']
+                gm = gmail.GMail(self.myself, self.config, self.auth)
+                gm.create_watch(labels=new_labels, refresh=True)
+        return new
+
+    def post_properties(self, prop: str, data: dict) -> dict or None:
+        """ Called on POST to properties, once for each property
+        :param prop: Property to be created
+        :type prop: str
+        :param data: The data to be stored in prop
+        :type data: dict
+        :return: The transformed data to store in prop or None if that property should be skipped and not stored
+        :rtype: dict or None
+        """
+        if not prop:
+            return None
+        elif prop in PROP_PROTECT:
+            return None
+        return data
 
     def delete_actor(self):
         """ Here we need to do additional cleanup when a user is deleted """
@@ -21,7 +99,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
         trackers = spark.store.load_trackers()
         for tracker in trackers:
             spark.store.delete_tracker(tracker["email"])
-        firehose_id = spark.me.get_property('firehoseId').value
+        firehose_id = spark.me.property.firehoseId
         if firehose_id:
             spark.link.unregister_webhook(firehose_id)
         spark.store.delete_rooms()
@@ -62,17 +140,17 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             logging.debug("Not able to retrieve myself from Cisco Webex Teams!")
             return False
         logging.debug("My identity:" + me['id'])
-        current_id = spark.me.get_property('oauthId').value
+        current_id = spark.me.property.oauthId
         if not current_id:
             if 'emails' not in me:
-                spark.me.delete_property('cookie_redirect')
+                spark.me.store.cookie_redirect = None
                 return False
             if spark.me.creator != me['emails'][0]:
-                spark.me.delete_property('cookie_redirect')
-                spark.me.delete_property('oauth_token')
-                spark.me.delete_property('oauth_refresh_token')
-                spark.me.delete_property('oauth_token_expiry')
-                spark.me.delete_property('oauth_refresh_token_expiry')
+                spark.me.store.cookie_redirect = None
+                spark.me.store.oauth_token = None
+                spark.me.store.oauth_refresh_token = None
+                spark.me.store.oauth_token_expiry = None
+                spark.me.store.oauth_refresh_token_expiry = None
                 spark.link.post_bot_message(
                     email=me['emails'][0],
                     text="**WARNING!!**\n\nAn attempt to create a new Army Knife account for " +
@@ -90,28 +168,28 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                          "No action required, but somebody may have attempted to hijack your"
                          " Army Knife account.",
                     markdown=True)
-                if not spark.me.get_property('oauthId').value:
+                if not spark.me.property.oauthId:
                     spark.me.delete()
                 return False
-            spark.me.set_property('email', me['emails'][0])
-            spark.me.set_property('oauthId', me['id'])
+            spark.me.store.email = me['emails'][0]
+            spark.me.property.oauthId = me['id']
             if 'displayName' in me:
-                spark.me.set_property('displayName', me['displayName'])
+                spark.me.property.displayName = me['displayName']
             if 'avatar' in me:
-                spark.me.set_property('avatarURI', me['avatar'])
+                spark.me.property.avatarURI = me['avatar']
             if '@actingweb.net' not in me['emails'][0]:
                 spark.link.post_admin_message(
                     text='New user just signed up: ' + me['displayName'] + ' (' + me['emails'][0] + ')')
         else:
             logging.debug("Actor's identity:" + current_id)
             if me['id'] != current_id:
-                spark.me.delete_property('cookie_redirect')
-                spark.me.delete_property('oauth_token')
-                spark.me.delete_property('oauth_refresh_token')
-                spark.me.delete_property('oauth_token_expiry')
-                spark.me.delete_property('oauth_refresh_token_expiry')
+                spark.me.store.cookie_redirect = None
+                spark.me.store.oauth_token = None
+                spark.me.store.oauth_refresh_token = None
+                spark.me.store.oauth_token_expiry = None
+                spark.me.store.oauth_refresh_token_expiry = None
                 spark.link.post_bot_message(
-                    email=spark.me.get_property('email').value,
+                    email=spark.me.property.email,
                     text="**SECURITY WARNING**\n\n" + (me['emails'][0] or "Unknown") +
                          " tried to log into your Army Knife account.\n\n"
                          "For security reasons, your Army Knife account has been suspended.\n\n"
@@ -129,10 +207,10 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                                                auth=self.auth,
                                                myself=self.myself,
                                                config=self.config)
-        email = spark.me.get_property('email').value
-        hook_id = spark.me.get_property('firehoseId').value
-        spark.me.delete_property('token_invalid')
-        spark.me.delete_property('service_status')
+        email = spark.me.property.email
+        hook_id = spark.me.property.firehoseId
+        spark.me.property.token_invalid = None
+        spark.me.property.service_status = None
         if hook_id:
             if spark.link.unregister_webhook(hook_id) is None and self.auth.oauth.last_response_code != 404 and \
                     self.auth.oauth.last_response_code != 0:
@@ -157,7 +235,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             )
         if hook and hook['id']:
             logging.debug('Successfully registered messages firehose webhook')
-            spark.me.set_property('firehoseId', hook['id'])
+            spark.me.property.firehoseId = hook['id']
         else:
             logging.debug('Failed to register messages firehose webhook')
             spark.link.post_admin_message(text='Failed to register firehose for new user: ' + email)
@@ -262,7 +340,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
         # Clean up any actor creations from earlier where we got wrong creator email
         # Likely not needed anymore, but just in case
         if spark.me.creator == self.config.bot['email'] or spark.me.creator == "creator":
-            my_email = spark.me.get_property('email').value
+            my_email = spark.me.property.email
             if my_email and len(my_email) > 0:
                 spark.me.modify(creator=my_email)
         # Deprecated support for /callbacks/room
@@ -324,7 +402,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             config=self.config)
         logging.debug("Got callback and processed " + sub["subscriptionid"] +
                       " subscription from peer " + peerid + " with json blob: " + json.dumps(data))
-        app_disabled = spark.me.get_property('app_disabled').value
+        app_disabled = spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + spark.me.creator)
             return True
@@ -351,7 +429,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                         out += '**From: ' + h['From'][0] + '**  \n'
                         out += 'Subject: ' + h['Subject'][0] + '  \n'
                         out += v['snippet'] + '\n\n---\n\n'
-                        if len(out)>4000:
+                        if len(out) > 4000:
                             spark.link.post_bot_message(email=spark.me.creator, text=out, markdown=True)
                             out = ''
                     if out:

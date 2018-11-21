@@ -3,9 +3,8 @@ import sys
 import logging
 import json
 from urllib.parse import urlparse
-from flask import Flask, request, redirect, Response, render_template
-from actingweb import config
-from actingweb import aw_web_request
+from flask import (Flask, request, redirect, Response, render_template)
+from actingweb import (config, aw_web_request, actor)
 from armyknife_src import (on_aw, fargate)
 from actingweb.handlers import (callbacks, properties, meta, root, trust, devtest,
                                 subscription, resources, oauth, callback_oauth, bot, www, factory)
@@ -268,6 +267,13 @@ def app_root():
     h = Handler(request)
     if not h.process():
         return Response(status=404)
+    if h.get_status() == 400:
+        existing = actor.Actor(config=get_config())
+        existing.get_from_creator(request.values.get('creator'))
+        if existing.id:
+            return redirect(get_config().root + existing.id + '/www?refresh=true', 302)
+        else:
+            return render_template('aw-root-failed.html', **h.webobj.response.template_values)
     if request.method == 'GET':
         return render_template('aw-root-factory.html', **h.webobj.response.template_values)
     return h.get_response()
