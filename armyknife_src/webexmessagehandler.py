@@ -1487,7 +1487,7 @@ class WebexTeamsMessageHandler:
                         text="Disconnected the Box folder from this room. The Box folder was not deleted.")
 
     def messages_created(self):
-        app_disabled = self.spark.me.propert.app_disabled
+        app_disabled = self.spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
             return
