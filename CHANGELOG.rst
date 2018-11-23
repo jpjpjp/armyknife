@@ -2,6 +2,14 @@
 CHANGELOG
 =========
 
+Nov 23, 2018
+------------
+- New version of actingweb, move to python3
+- Support lambda and fargate
+- Add /app and /noapp to support apps.actingweb.io apps
+- Fix box bug when box folder does not exist and service is removed
+- Support actingweb 2.5.0 with actor.store and actor.property
+
 May 17, 2018
 ------------
 - Add support for /deletemember <email> FORCE count to remove user from all shared rooms
