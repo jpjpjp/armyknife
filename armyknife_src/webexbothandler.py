@@ -64,8 +64,8 @@ class WebexTeamsBotHandler:
                 "**Usage of /all-users**\n\n"
                 "count: Make a count of all users\n\n"
                 "list: List all users\n\n"
-                "countfilter/listfilter/markfilter: Make a count, list, or mark a set of users.\n\n"
-                "countfilter/listfilter/markfilter can all be used with `attr` and `attr value`\n\n"
+                "countfilter/listfilter/markfilter/storefilter: Make a count, list, or mark a set of users.\n\n"
+                "countfilter/listfilter/markfilter/storefilter can all be used with `attr` and `attr value`\n\n"
                 "where no value means any users with attr set, and value = None mean attr not set.\n\n"
                 "If value is supplied, only users with attr matching value will be matched."
                 "When a set of users have been marked, the following commands can be used:\n\n"
@@ -106,7 +106,7 @@ class WebexTeamsBotHandler:
             out += "**List of actors "
         elif cmd == "countfilter":
             out += "**Count of actors "
-        elif cmd == "markfilter":
+        elif cmd == "markfilter" or cmd == "storefilter":
             out += "**Setting mark on actors "
         elif cmd == "marked-clear":
             out += "**Clearing marks for all actors**\n\n"
@@ -142,7 +142,10 @@ class WebexTeamsBotHandler:
             if cmd == "list":
                 out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
             elif 'filter' in cmd:
-                attr = a.property[str(msg_filter)]
+                if cmd == 'storefilter':
+                    attr = a.store[str(msg_filter)]
+                else:
+                    attr = a.property[str(msg_filter)]
                 if not attr and filter_value and filter_value == "None":
                     attr = "None"
                 if attr and (not filter_value or (filter_value and filter_value in attr)):
@@ -152,7 +155,7 @@ class WebexTeamsBotHandler:
                         counters[str(msg_filter)] = 1
                     if cmd == "listfilter":
                         out += "**" + a.creator + "** (" + str(a.id) + "): " + str(service_status or "None") + "\n\n"
-                    elif cmd == "markfilter":
+                    elif cmd == "markfilter" or cmd == "storefilter":
                         out += a.creator + " marked.\n\n"
                         a.property.filter_mark = 'true'
             elif cmd == "marked-clear":
