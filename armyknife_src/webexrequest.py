@@ -134,12 +134,13 @@ class WebexTeamsRequest:
         if headers and self.__signature_header in headers:
             sign = headers[self.__signature_header]
         else:
-            logging.warn('Got an unsigned bot message! (' + str(headers) + ')')
+            logging.warning('Got an unsigned bot message! (' + str(headers) + ')')
             return False
-        msghash = hmac.new(key=self.config.bot['secret'], msg=raw_body, digestmod=hashlib.sha1)
+        key = self.config.bot['secret'].encode('utf-8')
+        msghash = hmac.new(key=key, msg=raw_body, digestmod=hashlib.sha1)
         if msghash.hexdigest() != sign:
-            logging.warn('Signature does not match on bot message!')
-            #self.link.post_admin_message(text='SECURITY ALERT: Got bot message with non-matching signature')
+            logging.warning('Signature does not match on bot message!')
+            # self.link.post_admin_message(text='SECURITY ALERT: Got bot message with non-matching signature')
             return False
         logging.debug('Got signed and verified bot message')
         return True
@@ -151,8 +152,8 @@ class WebexTeamsRequest:
             sign = None
         if sign and len(sign) > 0:
             myhash = hashlib.sha256()
-            myhash.update(self.me.passphrase)
-            msghash = hmac.new(key=myhash.hexdigest(), msg=raw_body, digestmod=hashlib.sha1)
+            myhash.update(self.me.passphrase.encode('utf-8'))
+            msghash = hmac.new(key=myhash.hexdigest().encode('utf-8'), msg=raw_body, digestmod=hashlib.sha1)
             if msghash.hexdigest() == sign:
                 logging.debug('Got signed and verified firehose message')
                 return True
@@ -169,7 +170,7 @@ class WebexTeamsRequest:
         if what == 'me' and not self.actor_data:
             self.actor_data = self.link.get_me()
             if self.me and not self.actor_data or 'displayName' not in self.actor_data:
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve personal (me) data to enrich "
                               "from Army Knife. Code(" + str(last_err['code']) +
@@ -180,7 +181,7 @@ class WebexTeamsRequest:
         if what == 'person' and not self.person_data and self.person_id:
             self.person_data = self.link.get_person(self.person_id)
             if self.me and not self.person_data:
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve person data to enrich from Army Knife. Code(" + str(
                         last_err['code']) +
@@ -196,12 +197,11 @@ class WebexTeamsRequest:
         if what == 'room' and not self.room_data and self.room_id:
             self.room_data = self.link.get_room(self.room_id)
             if self.me and not self.room_data or 'title' not in self.room_data:
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 self.room_type = ''
                 last_err = self.link.last_response()
-                logging.error("Was not able to retrieve room data to enrich from Army Knife. Code(" + str(
-                        last_err['code']) +
-                    ") - " + last_err['message'])
+                logging.error("Was not able to retrieve room data to enrich from Army Knife. Code(" +
+                              str(last_err['code']) + ") - " + str(last_err['message']))
                 return False
             elif 'type' in self.room_data:
                 self.room_type = self.room_data['type']
@@ -210,16 +210,16 @@ class WebexTeamsRequest:
         if what == 'msg' and not self.msg_data and self.object_id:
             self.msg_data = self.link.get_message(self.object_id)
             if self.me and (not self.msg_data or 'text' not in self.msg_data):
-                self.me.set_property('service_status', 'invalid')
+                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve message data to enrich from Army Knife. Code(" + str(
                         last_err['code']) +
-                    ") - " + last_err['message'])
+                    ") - " + last_err['message'].decode('utf-8'))
                 if last_err['code'] == 400:
                     now = datetime.datetime.utcnow()
-                    token_invalid = self.me.get_property('token_invalid').value
+                    token_invalid = self.me.property.token_invalid
                     if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
-                        self.me.set_property('token_invalid', now.strftime("%Y%m%d"))
+                        self.me.property.token_invalid = now.strftime("%Y%m%d")
                         self.link.post_bot_message(
                             email=self.me.creator,
                             text="Your Army Knife Army Knife account has no longer access. Please type "
@@ -232,6 +232,9 @@ class WebexTeamsRequest:
                 return False
             if self.msg_data and 'personEmail' in self.msg_data:
                 logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail']))
+            if not self.msg_data or 'text' not in self.msg_data:
+                logging.debug('Failed to retrieve message and self.me not set!')
+                return False
             self.msg_list = self.msg_data['text'].lower().split(" ")
             self.msg_list_wcap = self.msg_data['text'].split(" ")
             if self.room_type == 'direct':
@@ -250,9 +253,9 @@ class WebexTeamsRequest:
             elif '/' in self.cmd:
                 logging.debug('Received command from unknown user: ' + self.cmd)
         if what == 'account' and not self.chat_room_id and self.me:
-            self.chat_room_id = self.me.get_property('chatRoomId').value
-            self.actor_spark_id = self.me.get_property('oauthId').value
-            self.service_status = self.me.get_property('service_status').value
+            self.chat_room_id = self.me.property.chatRoomId
+            self.actor_spark_id = self.me.property.oauthId
+            self.service_status = self.me.property.service_status
             logging.debug("Enriched with ArmyKnife user data (chatroom_id:" + (self.chat_room_id or '-') +
                           ") (spark_id:" + (self.actor_spark_id or '') + ") (service_status:" +
                           (self.service_status or '') + ")")
