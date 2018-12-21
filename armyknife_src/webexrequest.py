@@ -200,9 +200,8 @@ class WebexTeamsRequest:
                 self.me.property.service_status = 'invalid'
                 self.room_type = ''
                 last_err = self.link.last_response()
-                logging.error("Was not able to retrieve room data to enrich from Army Knife. Code(" + str(
-                        last_err['code']) +
-                    ") - " + last_err['message'])
+                logging.error("Was not able to retrieve room data to enrich from Army Knife. Code(" +
+                              str(last_err['code']) + ") - " + str(last_err['message']))
                 return False
             elif 'type' in self.room_data:
                 self.room_type = self.room_data['type']
@@ -233,6 +232,9 @@ class WebexTeamsRequest:
                 return False
             if self.msg_data and 'personEmail' in self.msg_data:
                 logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail']))
+            if not self.msg_data or 'text' not in self.msg_data:
+                logging.debug('Failed to retrieve message and self.me not set!')
+                return False
             self.msg_list = self.msg_data['text'].lower().split(" ")
             self.msg_list_wcap = self.msg_data['text'].split(" ")
             if self.room_type == 'direct':

@@ -1070,7 +1070,7 @@ class WebexTeamsMessageHandler:
             else:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="Usage: /app <apptype>, e.g. /app googlemail")
+                    text="Usage: /noapp <apptype>, e.g. /noapp googlemail")
                 return
             if not self.spark.me.delete_peer_trustee(shorttype=apptype):
                 self.spark.link.post_bot_message(

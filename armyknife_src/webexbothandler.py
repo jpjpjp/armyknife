@@ -1,7 +1,7 @@
 import json
 import datetime
 import logging
-from actingweb import actor
+from actingweb import actor, attribute
 from armyknife_src import fargate
 
 
@@ -832,6 +832,11 @@ class WebexTeamsBotHandler:
                     email=self.spark.person_object,
                     text="**Your Army Knife Account Data**\n\n----\n\n" +
                          json.dumps(props, sort_keys=True, indent=4),
+                    markdown=True)
+                attrs = attribute.Buckets(actor_id=self.spark.me.id, config=self.spark.config).fetch()
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text=json.dumps(attrs, sort_keys=True, indent=4),
                     markdown=True)
         elif self.spark.cmd == '/delete':
             self.spark.link.post_bot_message(
