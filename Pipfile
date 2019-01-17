@@ -12,8 +12,8 @@ name = "pypitest"
 Flask = "*"
 uWSGI = "*"
 #actingweb = {path = "./../actingweb", editable = true}
-#actingweb = {version="*", index="pypitest"}
-actingweb = "*"
+actingweb = {version="*", index="pypitest"}
+#actingweb = "*"
 pytz = "*"
 boto3 = "*"
 

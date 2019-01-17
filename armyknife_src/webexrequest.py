@@ -189,11 +189,11 @@ class WebexTeamsRequest:
                 return False
             if self.person_data:
                 logging.debug("Enriched with person data: " + str(self.person_data))
-            if 'emails' in self.person_data:
-                if self.person_data['emails'][0] == self.config.bot['email']:
-                    self.person_data = None
-                    self.is_actor_bot = True
-                    return False
+                if 'emails' in self.person_data:
+                    if self.person_data['emails'][0] == self.config.bot['email']:
+                        self.person_data = None
+                        self.is_actor_bot = True
+                        return False
         if what == 'room' and not self.room_data and self.room_id:
             self.room_data = self.link.get_room(self.room_id)
             if self.me and not self.room_data or 'title' not in self.room_data:
@@ -210,12 +210,12 @@ class WebexTeamsRequest:
         if what == 'msg' and not self.msg_data and self.object_id:
             self.msg_data = self.link.get_message(self.object_id)
             if self.me and (not self.msg_data or 'text' not in self.msg_data):
-                self.me.property.service_status = 'invalid'
                 last_err = self.link.last_response()
                 logging.error("Was not able to retrieve message data to enrich from Army Knife. Code(" + str(
                         last_err['code']) +
                     ") - " + last_err['message'].decode('utf-8'))
                 if last_err['code'] == 400:
+                    self.me.property.service_status = 'invalid'
                     now = datetime.datetime.utcnow()
                     token_invalid = self.me.property.token_invalid
                     if not token_invalid or token_invalid != now.strftime("%Y%m%d"):

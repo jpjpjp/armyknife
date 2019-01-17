@@ -145,7 +145,10 @@ class WebexTeamsBotHandler:
                 if cmd == 'storefilter':
                     attr = a.store[str(msg_filter)]
                 else:
-                    attr = a.property[str(msg_filter)]
+                    if msg_filter == 'creator':
+                        attr = a.creator
+                    else:
+                        attr = a.property[str(msg_filter)]
                 if not attr and filter_value and filter_value == "None":
                     attr = "None"
                 if attr and (not filter_value or (filter_value and filter_value in attr)):
@@ -751,6 +754,15 @@ class WebexTeamsBotHandler:
         if not self.spark.room_id:
             logging.error("Got a message-created event, but roomId was not set")
             return
+        # Ignore all messages from sparkbots
+        if not self.spark.person_object:
+            logging.debug('Warning! person_object not set, dropping...')
+            return
+        logging.debug('Got message from ' + self.spark.person_object.lower())
+        if "@sparkbot.io" in self.spark.person_object.lower() or \
+                "@webex.bot" in self.spark.person_object.lower():
+            logging.debug('Dropping webex bot message...')
+            return
         if not self.spark.enrich_data('msg'):
             return
         if self.spark.room_id == self.spark.config.bot["admin_room"]:
@@ -818,19 +830,28 @@ class WebexTeamsBotHandler:
                 firehose = "<none>"
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
-                text="**Your Army Knife Account**\n\n----\n\n" +
-                     "**Registered email**: " + self.spark.me.creator + "\n\n" +
-                     "**URL**: " + self.spark.config.root + self.spark.me.id + '/www\n\n' +
-                     "**Webhook**: " + firehose +
-                     "\n\nIf your Army Knife is fully functioning, you will also get some "
-                     "information about your Cisco Webex Teams "
-                     "account. If not, please do /init.",
+                text="**Your Army Knife Account**  \n----  \n" +
+                     "**Registered email**: " + self.spark.me.creator + "  \n" +
+                     "**URL**: " + self.spark.config.root + self.spark.me.id + '/www  \n' +
+                     "**Webhook**: " + firehose,
                 markdown=True)
+            if self.spark.me.property.service_status == 'invalid':
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Your account is not active, please do /init and authorize the account.",
+                    markdown=True)
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Your account is active, and the Cisco Webex Teams info section should also have come up now! "
+                         "If you don't see your Webex Teams nickname and other info, please do "
+                         "/init and authorize the account again.",
+                    markdown=True)
             if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == "full":
                 props = self.spark.me.get_properties()
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="**Your Army Knife Account Data**\n\n----\n\n" +
+                    text="**Your Army Knife Account Data**  \n----  \n" +
                          json.dumps(props, sort_keys=True, indent=4),
                     markdown=True)
                 attrs = attribute.Buckets(actor_id=self.spark.me.id, config=self.spark.config).fetch()
@@ -839,10 +860,16 @@ class WebexTeamsBotHandler:
                     text=json.dumps(attrs, sort_keys=True, indent=4),
                     markdown=True)
         elif self.spark.cmd == '/delete':
-            self.spark.link.post_bot_message(
-                email=self.spark.person_object,
-                text="Did you also get a confirmation that all your data and account were deleted?!"
-                     " (above or below this message). If not, do /init, then /delete DELETENOW again.")
+            if self.spark.me.property.service_status == 'invalid':
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Your account has invalid status and Webex Teams data cannot be cleaned up"
+                         " You need to first do /init, authorise the account, and then /delete DELETENOW again.")
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.person_object,
+                    text="Did you also get a confirmation that all your data and account were deleted?!"
+                         " (above or below this message). If not, do /init, then /delete DELETENOW again.")
         elif self.spark.cmd == '/support':
             self.spark.link.post_admin_message(
                 text="From (" + self.spark.me.creator + "): " +

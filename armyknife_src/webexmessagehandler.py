@@ -218,7 +218,7 @@ class WebexTeamsMessageHandler:
         if len(self.spark.auth.validate_oauth_token(lazy=True)) > 0:
             if not service_status or service_status != 'invalid':
                 self.spark.me.property.service_status = 'invalid'
-            logging.info("Was not able to automatically refresh token.")
+            logging.debug("Was not able to automatically refresh token.")
             token_invalid = self.spark.me.property.token_invalid
             if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
                 self.spark.me.property.token_invalid = now.strftime("%Y%m%d")
@@ -455,19 +455,43 @@ class WebexTeamsMessageHandler:
 
     def message_actions(self):
         # Ignore all messages from sparkbots
+        if not self.spark.me:
+            logging.debug('Dropping message where me is not set')
+            return False
+        if not self.spark.person_object:
+            logging.debug('Warning! person_object not set, dropping...')
+            return False
+        logging.debug('Got message from ' + self.spark.person_object.lower())
         if "@sparkbot.io" in self.spark.person_object.lower() or \
                 "@webex.bot" in self.spark.person_object.lower():
-            return
+            return False
         app_disabled = self.spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
             logging.debug("Account is disabled: " + self.spark.me.creator)
-            return
+            return False
+        # TODO Tmp disable this as invalid was set too quickly in some cases
+        if self.spark.me.property.service_status == 'invalid2':
+            logging.debug('Account has status invalid, dropping message')
+            now = datetime.datetime.utcnow()
+            token_invalid = self.spark.me.property.token_invalid
+            if not token_invalid or token_invalid != now.strftime("%Y%m%d"):
+                self.spark.me.property.token_invalid = now.strftime("%Y%m%d")
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Your Army Knife account has no longer access. Please type "
+                         "/init in this room to re-authorize the account.")
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="If you repeatedly get this error message, do /delete DELETENOW "
+                         "before a new /init. This will reset your account (note: all settings as well).")
+                logging.info("User (" + self.spark.me.creator + ") got notified about invalid status.")
+            return False
         self.validate_token()
         self.global_actions()
         self.message_autoreply()
         self.message_mentions()
         self.message_commands_to_me()
-        return
+        return True
 
     def extract_teamlist(self, team_str):
         team_list = []
@@ -717,15 +741,16 @@ class WebexTeamsMessageHandler:
             else:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
-                    text="**Your Cisco Webex Teams Account**\n\n----\n\n" +
-                         "**Cisco Webex Teams nickname**: " + me_data['nickName'] + "\n\n"
-                         "**Cisco Webex Teams id**: " + me_data['id'] + "\n\n"
-                         "**Cisco Webex Teams avatar**: " + (me_data['avatar'] or '') + "\n\n",
+                    text="**Your Cisco Webex Teams Account**  \n----  \n" +
+                         "**Cisco Webex Teams nickname**: " + me_data['nickName'] + "  \n"
+                         "**Cisco Webex Teams id**: " + me_data['id'] + "  \n"
+                         "**Cisco Webex Teams avatar**: " + (me_data['avatar'] or '') + "  \n"
+                         "Your account is enabled and fully functioning!",
                     markdown=True)
         elif self.spark.cmd == '/listwebhooks':
             self.spark.link.post_bot_message(
                 email=self.spark.me.creator,
-                text="**All Registered Webhooks on Your Account**\n\n- - -",
+                text="**All Registered Webhooks on Your Account**  \n---",
                 markdown=True)
             ret = self.spark.link.get_all_webhooks()
             while 1:

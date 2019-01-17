@@ -207,7 +207,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                                                auth=self.auth,
                                                myself=self.myself,
                                                config=self.config)
-        email = spark.me.property.email
+        email = spark.me.creator
         hook_id = spark.me.property.firehoseId
         spark.me.property.token_invalid = None
         spark.me.property.service_status = None
@@ -241,14 +241,14 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             spark.link.post_admin_message(text='Failed to register firehose for new user: ' + email)
             spark.link.post_bot_message(
                 email=email,
-                text="Hi there! Welcome to the **Army Knife**! \n\n"
-                     "You have successfully authorized access.\n\nSend me commands starting with /. Like /help",
+                text="Not able to create Cisco Webex Teams webhook link, do /init and authorize again "
+                     "or do `/support your_msg` to get help",
                 markdown=True)
             return True
         spark.link.post_bot_message(
             email=email,
             text="Hi there! Welcome to the **Army Knife**! \n\n"
-                 "You have successfully authorized access.\n\nSend me commands starting with /. Like /help",
+                 "You have successfully authorized access.\n\nSend me commands starting with /. Like /help or /me",
             markdown=True)
         return True
 
@@ -361,7 +361,9 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                 # memberships:deleted
                 return True
         elif spark.body['resource'] == 'messages':
-            handler.message_actions()
+            # If message_actions() returns False, the account was disabled or invalid
+            if not handler.message_actions():
+                return True
         # Only handle messages:created events below
         if spark.body['resource'] != 'messages' or spark.body['event'] != 'created':
             return True

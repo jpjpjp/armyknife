@@ -6,7 +6,7 @@ import boto3
 
 
 def in_fargate():
-    if os.getenv('LAMBDA_TASK_ROOT', None):
+    if os.getenv('LAMBDA_TASK_ROOT', None) and not os.getenv('LAMBDA_DISABLE', None):
         return False
     return True
 
@@ -16,7 +16,7 @@ def fork_container(req, actor_id):
     If not running in lambda env, a fargate container is forked off to
     take the entire request and execute with it.
     """
-    if not os.getenv('LAMBDA_TASK_ROOT', None):
+    if not os.getenv('LAMBDA_TASK_ROOT', None) or os.getenv('LAMBDA_DISABLE', None):
         return False
     headers = {}
     for k, v in req.headers.items():
