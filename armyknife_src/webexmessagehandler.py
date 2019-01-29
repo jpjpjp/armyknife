@@ -840,7 +840,7 @@ class WebexTeamsMessageHandler:
                     text="Usage: `/checkmember <email>` to check room memberships for the email",
                     markdown=True)
                 return
-            if not fargate.in_fargate():
+            if not fargate.in_fargate() and not fargate.fargate_disabled():
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="You requested a tough task! I will call upon one of my workers to check memberships...",
@@ -866,6 +866,22 @@ class WebexTeamsMessageHandler:
             target = self.spark.msg_list[1]
             ids = []
             if self.spark.msg_list_wcap[2] == "FORCE":
+                if len(self.spark.msg_list) < 4:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Usage: `/deletemember <email> <room-id>` to delete user with <email>"
+                             " from a room with <room-id>.\n\n"
+                             " or: `/deletemember <email> FORCE count` to delete user with <email>"
+                             " from ALL shared room where count=number of shared rooms (use /checkmember).",
+                        markdown=True)
+                    return
+                if not fargate.in_fargate() and not fargate.fargate_disabled():
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="You requested a tough task! I will call upon one of my workers to delete memberships...",
+                        markdown=True)
+                    fargate.fork_container(self.webobj.request, self.spark.actor_id)
+                    return
                 count = -1
                 try:
                     target_count = int(self.spark.msg_list[3])
@@ -1354,6 +1370,25 @@ class WebexTeamsMessageHandler:
                     email=self.spark.me.creator,
                     text="Usage: `/copyroom New Room Title`", markdown=True)
                 return
+            next_members = self.spark.link.get_memberships(spark_id=self.spark.room_id)
+            members = []
+            while next_members and 'items' in next_members:
+                members.extend(next_members['items'])
+                next_members = self.spark.link.get_memberships(get_next=True)
+            if len(members) == 0:
+                logging.info("Not able to retrieve members for room in /copyroom")
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Not able to retrieve room members.")
+                return
+            if len(members) > 25:
+                if not fargate.in_fargate() and not fargate.fargate_disabled():
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="You requested a tough task! I will call upon one of my workers to add members...",
+                        markdown=True)
+                    fargate.fork_container(self.webobj.request, self.spark.actor_id)
+                    return
             title = self.spark.msg_data['text'][len(self.spark.msg_list[0]) + 1:]
             room_data = self.spark.link.get_room(spark_id=self.spark.room_id)
             if room_data and 'teamId' in room_data:
@@ -1365,17 +1400,6 @@ class WebexTeamsMessageHandler:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text="Not able to create new room.")
-                return
-            next_members = self.spark.link.get_memberships(spark_id=self.spark.room_id)
-            members = []
-            while next_members and 'items' in next_members:
-                members.extend(next_members['items'])
-                next_members = self.spark.link.get_memberships(get_next=True)
-            if len(members) == 0:
-                logging.info("Not able to retrieve members for room in /copyroom")
-                self.spark.link.post_bot_message(
-                    email=self.spark.me.creator,
-                    text="Created room, but not able to add members.")
                 return
             for m in members:
                 self.spark.link.add_member(spark_id=room['id'], person_id=m['personId'])
@@ -1533,6 +1557,9 @@ class WebexTeamsMessageHandler:
                 self.spark.service_status == 'invalid' or \
                 self.spark.service_status == 'firehose':
             self.spark.me.property.service_status = 'active'
+        if self.spark.cmd == '/fargate':
+            fargate.fork_container(self.webobj.request, self.spark.actor_id)
+            return
         if self.spark.room_id == self.spark.chat_room_id:
             # Commands run in the 1:1 bot room that need OAuth rights on behalf
             # of the user to execute

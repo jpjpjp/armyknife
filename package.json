@@ -2,7 +2,9 @@
   "name": "armyknife",
   "description": "",
   "version": "0.1.0",
-  "dependencies": {},
+  "dependencies": {
+    "serverless": "^1.36.3"
+  },
   "devDependencies": {
     "serverless-pseudo-parameters": "^2.2.0",
     "serverless-python-requirements": "^4.2.4",

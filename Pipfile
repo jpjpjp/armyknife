@@ -3,17 +3,17 @@ url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-[[source]]
-url = "https://testpypi.python.org/pypi"
-verify_ssl = true
-name = "pypitest"
+#[[source]]
+#url = "https://testpypi.python.org/pypi"
+#verify_ssl = true
+#name = "pypitest"
 
 [packages]
 Flask = "*"
 uWSGI = "*"
 #actingweb = {path = "./../actingweb", editable = true}
-actingweb = {version="*", index="pypitest"}
-#actingweb = "*"
+#actingweb = {version="*", index="pypitest"}
+actingweb = "*"
 pytz = "*"
 boto3 = "*"
 

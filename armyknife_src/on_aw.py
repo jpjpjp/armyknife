@@ -145,7 +145,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             if 'emails' not in me:
                 spark.me.store.cookie_redirect = None
                 return False
-            if spark.me.creator != me['emails'][0]:
+            if spark.me.creator.lower() != me['emails'][0].lower():
                 spark.me.store.cookie_redirect = None
                 spark.me.store.oauth_token = None
                 spark.me.store.oauth_refresh_token = None
@@ -171,7 +171,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                 if not spark.me.property.oauthId:
                     spark.me.delete()
                 return False
-            spark.me.store.email = me['emails'][0]
+            spark.me.store.email = me['emails'][0].lower()
             spark.me.property.oauthId = me['id']
             if 'displayName' in me:
                 spark.me.property.displayName = me['displayName']
@@ -259,7 +259,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                                                auth=self.auth,
                                                myself=None,
                                                config=self.config)
-        if not fargate.in_fargate() and \
+        if not fargate.in_fargate() and not fargate.fargate_disabled() and \
                 not spark.check_bot_signature(self.webobj.request.headers, self.webobj.request.body):
             return 404
         # Try to re-init from person_id in the message
@@ -339,8 +339,8 @@ class OnAWWebexTeams(on_aw.OnAWBase):
             return True
         # Clean up any actor creations from earlier where we got wrong creator email
         # Likely not needed anymore, but just in case
-        if spark.me.creator == self.config.bot['email'] or spark.me.creator == "creator":
-            my_email = spark.me.property.email
+        if spark.me.creator.lower() == self.config.bot['email'].lower() or spark.me.creator == "creator":
+            my_email = spark.me.property.email.lower()
             if my_email and len(my_email) > 0:
                 spark.me.modify(creator=my_email)
         # Deprecated support for /callbacks/room

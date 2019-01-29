@@ -2,6 +2,14 @@
 CHANGELOG
 =========
 
+Jan 29, 2019
+------------
+- Improve fargate detection code, add fargate_disabled(), add default debug logging
+- Fix handling of account creation and compare just lower() of emails
+- Add admin /imp command: /imp <email> /command (only /me supported now)
+- Add fargate to /deletemember and add a new /fargate command to force using fargate
+- Use new 2.5.1 of actingweb lib
+
 Nov 23, 2018
 ------------
 - New version of actingweb, move to python3

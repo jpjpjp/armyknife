@@ -6,6 +6,7 @@ import datetime
 from actingweb import actor
 from . import ciscowebexteams
 from . import armyknife
+from . import fargate
 
 
 class WebexTeamsRequest:
@@ -89,8 +90,8 @@ class WebexTeamsRequest:
         if not self.data:
             return
         if 'personEmail' in self.data:
-            self.person_object = self.data['personEmail']
-            if self.person_object == self.config.bot['email']:
+            self.person_object = self.data['personEmail'].lower()
+            if self.person_object == self.config.bot['email'].lower():
                 self.is_bot_object = True
                 if self.person_id == self.data['personId']:
                     self.is_actor_bot = True
@@ -190,7 +191,7 @@ class WebexTeamsRequest:
             if self.person_data:
                 logging.debug("Enriched with person data: " + str(self.person_data))
                 if 'emails' in self.person_data:
-                    if self.person_data['emails'][0] == self.config.bot['email']:
+                    if self.person_data['emails'][0].lower() == self.config.bot['email'].lower():
                         self.person_data = None
                         self.is_actor_bot = True
                         return False
@@ -231,12 +232,15 @@ class WebexTeamsRequest:
                         logging.info("User (" + self.me.creator + ") has invalid refresh token and got notified.")
                 return False
             if self.msg_data and 'personEmail' in self.msg_data:
-                logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail']))
+                logging.debug("Enriched with message data from: " + str(self.msg_data['personEmail'].lower()))
             if not self.msg_data or 'text' not in self.msg_data:
                 logging.debug('Failed to retrieve message and self.me not set!')
                 return False
             self.msg_list = self.msg_data['text'].lower().split(" ")
             self.msg_list_wcap = self.msg_data['text'].split(" ")
+            if fargate.in_fargate() and self.msg_list[0] == '/fargate':
+                del self.msg_list[0]
+                del self.msg_list_wcap[0]
             if self.room_type == 'direct':
                 self.cmd = self.msg_list[0]
             else:

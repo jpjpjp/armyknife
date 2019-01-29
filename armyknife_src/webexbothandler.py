@@ -1,8 +1,9 @@
 import json
 import datetime
 import logging
-from actingweb import actor, attribute
+from actingweb import actor, attribute, auth
 from armyknife_src import fargate
+from armyknife_src import ciscowebexteams
 
 
 class WebexTeamsBotHandler:
@@ -223,6 +224,69 @@ class WebexTeamsBotHandler:
             self.spark.link.post_admin_message("Sent the following message to " + self.spark.msg_list[2] +
                                                ":\n\n" + message,
                                                markdown=True)
+        elif self.spark.cmd == "/imp":
+            if len(self.spark.msg_list_wcap) < 4:
+                self.spark.link.post_admin_message("Usage: `/account <email|id> <cmd>`",
+                                                   markdown=True)
+                return
+            acc = self.spark.msg_list_wcap[2]
+            if '@' in acc:
+                owner = actor.Actor(config=self.spark.config)
+                owner.get_from_creator(acc)
+                actor_id = owner.id
+            else:
+                owner = actor.Actor(actor_id=acc, config=self.spark.config)
+                actor_id = acc
+            if not actor_id:
+                self.spark.link.post_admin_message("Could not find " + acc, markdown=True)
+                return
+            owner_auth = auth.Auth(actor_id=actor_id, config=self.spark.config)
+            owner_spark = ciscowebexteams.CiscoWebexTeams(auth=owner_auth, actor_id=actor_id,
+                                                          config=self.spark.config)
+            if self.spark.msg_list[3] == '/me':
+                me_data = owner_spark.get_me()
+                if not me_data:
+                    self.spark.link.post_admin_message(
+                        text="Not able to retrieve data from Cisco Webex Teams for this user.",
+                        markdown=True)
+                else:
+                    self.spark.link.post_admin_message(
+                        text="**Cisco Webex Teams Account**  \n----  \n" +
+                             "**Cisco Webex Teams nickname**: " + me_data['nickName'] + "  \n"
+                             "**Cisco Webex Teams id**: " +
+                             me_data['id'] + "  \n"
+                             "**Cisco Webex Teams avatar**: " + (me_data['avatar'] or '') + "  \n"
+                             "The account is enabled and fully functioning!",
+                        markdown=True)
+                firehose = owner.property.firehoseId
+                if not firehose:
+                    firehose = "<none>"
+                self.spark.link.post_admin_message(
+                    text="**Army Knife Account**  \n----  \n" +
+                         "**Registered creator email**: " + owner.creator + "  \n" +
+                         "**URL**: " + owner.config.root + owner.id + '/www  \n' +
+                         "**Webhook**: " + firehose,
+                    markdown=True)
+                if owner.property.service_status == 'invalid':
+                    self.spark.link.post_admin_message(
+                        text="The account is not active, it needs to be authorized.",
+                        markdown=True)
+                else:
+                    self.spark.link.post_admin_message(
+                        text="The account is active, and the Cisco Webex Teams info section "
+                             "should also have come up now! "
+                             "If you don't see the Webex Teams nickname and other info, the account must be authorized"
+                             " again.",
+                        markdown=True)
+                props = owner.get_properties()
+                self.spark.link.post_admin_message(
+                    text="**Army Knife Account Data**  \n----  \n" +
+                         json.dumps(props, sort_keys=True, indent=4),
+                    markdown=True)
+                attrs = attribute.Buckets(actor_id=actor_id, config=self.spark.config).fetch()
+                self.spark.link.post_admin_message(
+                    text=json.dumps(attrs, sort_keys=True, indent=4),
+                    markdown=True)
         elif self.spark.cmd == "/stats":
             stats = self.spark.store.get_stats_commands()
             out = ""
@@ -241,7 +305,7 @@ class WebexTeamsBotHandler:
                 "Use `/stats` to see statistics on command usage.",
                 markdown=True)
         elif self.spark.cmd == "/all-users":
-            if not fargate.in_fargate():
+            if not fargate.in_fargate() and not fargate.fargate_disabled():
                 self.spark.link.post_admin_message(
                     "You requested a tough task! I will call upon one of my workers to do /all-users tasks...",
                     markdown=True)
