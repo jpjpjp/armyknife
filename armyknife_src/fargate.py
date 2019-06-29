@@ -67,11 +67,11 @@ def fork_container(req, actor_id):
                     'environment': [
                         {
                             'name': 'ACTINGWEB_PAYLOAD',
-                            'value': webreq
+                            'value': webreq or ''
                         },
                         {
                             'name': 'ACTINGWEB_ACTOR',
-                            'value': actor_id
+                            'value': actor_id or ''
                         },
                         {
                             'name': 'LOG_LEVEL',

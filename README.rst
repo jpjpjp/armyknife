@@ -28,6 +28,13 @@ while the trust suite also tests trust relationships between actors, and finally
 subscriptions between actors with trust relationships. Thus, if basic test suite fails, all will fail, and if trust
 test suite fails, subscription test suite will also fail.
 
+Serverless
+----------
+In order to use serverless, you need awscli, pip, pipenv, Docker, node.js, and serverless.
+Also, you need to install the serverless plugins: serverless-python-requirements, serverless-pseudo-parameters, and serverless-wsgi.
+
+You can then update the serverless.yml file with details for your environment and do `serverless deploy`.
+
 AWS Elastic Beanstalk
 ---------------------
 

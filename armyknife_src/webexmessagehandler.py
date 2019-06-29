@@ -464,6 +464,7 @@ class WebexTeamsMessageHandler:
         logging.debug('Got message from ' + self.spark.person_object.lower())
         if "@sparkbot.io" in self.spark.person_object.lower() or \
                 "@webex.bot" in self.spark.person_object.lower():
+            logging.debug('Dropping webex bot message...')
             return False
         app_disabled = self.spark.me.property.app_disabled
         if app_disabled and app_disabled.lower() == 'true':
