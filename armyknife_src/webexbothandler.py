@@ -225,7 +225,7 @@ class WebexTeamsBotHandler:
                                                ":\n\n" + message,
                                                markdown=True)
         elif self.spark.cmd == "/account":
-            if len(self.spark.msg_list_wcap) < 3:
+            if len(self.spark.msg_list_wcap) < 2:
                 self.spark.link.post_admin_message("Usage: `/account <email|id>`",
                                                    markdown=True)
                 return
