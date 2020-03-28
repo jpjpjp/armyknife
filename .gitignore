@@ -5,3 +5,4 @@ package-lock.json
 serverless_wsgi.py
 .serverless-wsgi
 wsgi_handler.py
+.vscode/settings.json
