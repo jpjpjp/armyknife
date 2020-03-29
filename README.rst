@@ -35,6 +35,18 @@ Also, you need to install the serverless plugins: serverless-python-requirements
 
 You can then update the serverless.yml file with details for your environment and do `serverless deploy`.
 
+AWS Lambda
+----------
+You can deploy the app to AWS Lamda in three simple steps. There is a serverless.yml file with the config you need.
+
+1. `Install Serverless <https://serverless.com/framework/docs/providers/aws/guide/installation/>`_
+
+2. Edit serverless.yml environment variables, including APP_HOST_FQDN to use your domain (or AWS domain, see 4.) and region if you prefer another
+
+3. Run `sls deploy`
+
+4. (if using AWS allocated domain) Use the long domain name AWS assigns the lambda and go to #2 above
+
 AWS Elastic Beanstalk
 ---------------------
 
