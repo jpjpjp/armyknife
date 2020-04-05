@@ -249,6 +249,8 @@ class WebexTeamsRequest:
                     return True
                 # @mention /cmd
                 if self.bot_request:
+                    if len(self.msg_list) == 1:
+                        return True
                     self.cmd = self.msg_list[1]
                 else:
                     self.cmd = self.msg_list[0]

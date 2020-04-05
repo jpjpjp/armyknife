@@ -5,7 +5,7 @@ import json
 from urllib.parse import urlparse
 from flask import (Flask, request, redirect, Response, render_template)
 from actingweb import (config, aw_web_request, actor)
-from armyknife_src import (on_aw, fargate)
+from armyknife_src import (on_aw, fargate, payments)
 from actingweb.handlers import (callbacks, properties, meta, root, trust, devtest,
                                 subscription, resources, oauth, callback_oauth, bot, www, factory)
 
@@ -424,6 +424,38 @@ def app_oauth_callback():
         return Response(status=404)
     return h.get_response()
 
+# Outside Actingweb requests
+@app.route('/stripe', methods=['GET', 'POST'], strict_slashes=False)
+def app_stripe():
+    template_values = {
+        'ACTOR_ID': str(request.values['id']),
+        'AMOUNT': str(request.values['amount']),
+    }
+    if request.method == 'GET':
+        return render_template('stripe-form.html', **template_values)
+    if request.method == 'POST':
+        me = actor.Actor(request.values['id'], get_config())
+        result = payments.process_card(
+            actor=me,
+            plan=request.values.get('plan', 'monthly'),
+            token=request.values['stripeToken'],
+            config=get_config()
+        )
+        if result:
+            return render_template('stripe-form-success.html', **template_values)
+        else:
+            return render_template('stripe-form-failure.html', **template_values)
+    return Response(status=404)
+
+@app.route('/stripe-hook', methods=['POST'], strict_slashes=False)
+def app_stripe_hook():
+    return Response(
+        status=payments.process_webhook(
+            request.body,
+            request.headers['STRIPE_SIGNATURE'],
+            get_config()
+            )
+        )
 
 if __name__ == "__main__":
     # To debug in pycharm inside the Docker container, remember to uncomment import pydevd as well

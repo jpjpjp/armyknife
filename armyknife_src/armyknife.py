@@ -278,6 +278,40 @@ class ArmyKnife:
                     del_msg.delete_attr(a)
         return ret
 
+    def save_perm_attribute(self, name=None, value=None):
+        if not name:
+            return False
+        if not value:
+            value = ''
+        now = datetime.datetime.utcnow()
+        now = now.replace(tzinfo=pytz.utc)
+        bucket = attribute.Attributes("perm", self.actor_id, config=self.config)
+        bucket.set_attr(
+            name,
+            data=value,
+            timestamp=now
+        )
+        return True
+
+    def get_perm_attribute(self, name=None):
+        if not name:
+            return None
+        perm_bucket = attribute.Attributes('perm', self.actor_id, config=self.config)
+        return perm_bucket.get_attr(name)
+
+    def get_perm_attributes(self):
+        perm_attrs = attribute.Attributes('perm', self.actor_id, config=self.config)
+        attrs = perm_attrs.get_bucket()
+        ret = {}
+        if not attrs:
+            return ret
+        for p, v in attrs.items():
+            ret[p] = {
+                'data': v['data'],
+                'timestamp': v['timestamp']
+            }
+        return ret
+
     def stats_incr_command(self, command=None):
         if not command:
             return False

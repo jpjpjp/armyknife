@@ -10,6 +10,7 @@ from armyknife_src import fargate
 from actingweb import actor
 from actingweb import auth
 from actingweb import aw_proxy
+from . import payments
 
 
 class WebexTeamsMessageHandler:
@@ -139,7 +140,7 @@ class WebexTeamsMessageHandler:
                         out += " `(last edited: " + timestamp.strftime('%Y-%m-%d %H:%M') + " UTC)`\n\n"
                     out += "\n\n---\n\n"
                     for i, el in sorted(toplist.items()):
-                        out = out + "**" + i + "**: " + el + "\n\n"
+                        out = out + "**" + str(i) + "**: " + str(el) + "\n\n"
                     per_user_spark.post_bot_message(
                         email=email_owner,
                         text=out,
@@ -197,10 +198,10 @@ class WebexTeamsMessageHandler:
                         continue
                     per_user_spark.post_bot_message(
                         email=email_owner,
-                        text="**PIN ALERT!! - " + m["comment"] + "**\n\n"
-                                                                 "From " + person['displayName'] +
-                             " (" + person['emails'][0] + ")" +
-                             " in room (" + room['title'] + ")\n\n" +
+                        text="**PIN ALERT!! - " + m["comment"] + "**\n\n" + \
+                             "From " + person['displayName'] + \
+                             " (" + person['emails'][0] + ")" + \
+                             " in room (" + room['title'] + ")\n\n" + \
                              pin['text'] + "\n\n",
                         markdown=True)
                 else:
@@ -237,7 +238,7 @@ class WebexTeamsMessageHandler:
     def get_autoreply_msg(self):
         if not self.spark.me.property.autoreplyMsg:
             return None
-        # Retrieve the last user we responded to and don't reply if it's the same user
+
         last_auto_reply = self.spark.me.property.autoreplyMsg_last
         if last_auto_reply and last_auto_reply == self.spark.person_object.lower():
             return None
@@ -1561,6 +1562,17 @@ class WebexTeamsMessageHandler:
         if self.spark.cmd == '/fargate':
             fargate.fork_container(self.webobj.request, self.spark.actor_id)
             return
+        # Global beta users bypass subscriptions and trials!
+        feature_toggles = self.spark.me.property.featureToggles
+        if not feature_toggles or 'beta' not in feature_toggles:
+            abort, msg = payments.check_subscriptions(self.spark.cmd, self.spark.store, 'integration')
+            if msg:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=msg,
+                    markdown=True)
+            if abort:
+                return
         if self.spark.room_id == self.spark.chat_room_id:
             # Commands run in the 1:1 bot room that need OAuth rights on behalf
             # of the user to execute

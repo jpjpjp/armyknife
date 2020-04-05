@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+  <meta charset="UTF-8">
+  <title>Subscribe to the Army Knife</title>
+
+    <link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/css/materialize.min.css'>
+    <link rel='stylesheet prefetch' href='https://fonts.googleapis.com/css?family=Architects+Daughter|Roboto&subset=latin,devanagari'>
+    <link rel="stylesheet" href='/static/style.css'>
+
+  <style>
+    .panel {
+      background-color: #F5F5F7;
+      border: 1px solid #ddd;
+      padding: 20px;
+      display: block;
+      width: 270px;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    .btn {
+      background: rgb(68,175,231); /* Old browsers */
+      background: -moz-linear-gradient(top, rgba(68,175,231,1) 0%, rgba(49,152,223,1) 100%); /* FF3.6-15 */
+      background: -webkit-linear-gradient(top, rgba(68,175,231,1) 0%,rgba(49,152,223,1) 100%); /* Chrome10-25,Safari5.1-6 */
+      background: linear-gradient(to bottom, rgba(68,175,231,1) 0%,rgba(49,152,223,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+      filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#44afe7', endColorstr='#3198df',GradientType=0 );
+      color: #fff;
+      display: block;
+      width: 100%;
+      border: 1px solid rgba(46, 86, 153, 0.0980392);
+      border-bottom-color: rgba(46, 86, 153, 0.4);
+      border-top: 0;
+      border-radius: 4px;
+      font-size: 17px;
+      text-shadow: rgba(46, 86, 153, 0.298039) 0px -1px 0px;
+      line-height: 34px;
+      -webkit-font-smoothing: antialiased;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    .btn:hover {
+      cursor: pointer;
+    }
+
+
+ul li label{
+  display: block;
+  position: relative;
+  font-weight: 300;
+  font-size: 1.35em;
+  padding: 25px 25px 25px 80px;
+  margin: 10px auto;
+  height: 30px;
+  z-index: 9;
+  cursor: pointer;
+  -webkit-transition: all 0.25s linear;
+}
+
+  </style>
+</head>
+
+
+<body class="welcome">
+
+  <main class="valign-wrapper">
+    <span class="container grey-text text-darken-1 ">
+
+      <h1 class="title grey-text text-darken-3">Subscribe to the Army Knife!</h1>
+
+      <blockquote class="flow-text">When subscribing to the ArmyKnife, you help supporting the work to improve the bot, as well
+          as contribute to the costs of hosting the bot with Amazon Web Services.
+      </blockquote>
+
+    <div>
+        <form action="/stripe" method="post" id="payment-form">
+            <input type="hidden" name="id" value="{{ ACTOR_ID }}">
+            <input type="hidden" name="amount" value="{{ AMOUNT }}">
+            <input type="radio" id="monthly" name="plan" checked="checked" value="monthly">
+            <label for="monthly">Monthly $2.99</label>
+            <input type="radio" id="yearly" name="plan" value="yearly">
+            <label for="yearly">Yearly $29.99</label>
+          <div class="form-row">
+            <label for="card-element">
+              Credit or debit card
+            </label>
+            <div id="card-element">
+              <!-- A Stripe Element will be inserted here. -->
+            </div>
+            <!-- Used to display Element errors. -->
+            <div id="card-errors" role="alert"></div>
+          </div>
+          <button>Submit Payment</button>
+        </form>
+    </div>
+      <footer class="page-footer deep-purple lighten-5">
+          <div class="grey-text text-darken-3">Support: <a href="mailto:support@greger.io">support@greger.io</a>
+        </div>
+      </footer>
+    </span>
+  </main>
+
+</body>
+<script src="https://js.stripe.com/v3"></script>
+
+<script>
+function stripeTokenHandler(token) {
+  // Insert the token ID into the form so it gets submitted to the server
+  var form = document.getElementById('payment-form');
+  var hiddenInput = document.createElement('input');
+  hiddenInput.setAttribute('type', 'hidden');
+  hiddenInput.setAttribute('name', 'stripeToken');
+  hiddenInput.setAttribute('value', token.id);
+  form.appendChild(hiddenInput);
+
+  // Submit the form
+  form.submit();
+}
+
+var stripe = Stripe('pk_test_LWrQJLMJgvPWgtXfdMemnA4a');
+  var elements = stripe.elements({
+    fonts: [
+      {
+        cssSrc: "https://rsms.me/inter/inter-ui.css"
+      }
+    ]
+  });
+
+var style = {
+  base: {
+    color: '#32325d',
+    lineHeight: '26px',
+    fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+    fontSmoothing: 'antialiased',
+    fontSize: '24px',
+    '::placeholder': {
+      color: '#aab7c4'
+    }
+  },
+  invalid: {
+    color: '#fa755a',
+    iconColor: '#fa755a'
+  }
+};
+
+// Create an instance of the card Element.
+var card = elements.create('card', {style: style});
+
+// Add an instance of the card Element into the `card-element` <div>.
+card.mount('#card-element');
+
+card.addEventListener('change', function(event) {
+  var displayError = document.getElementById('card-errors');
+  if (event.error) {
+    displayError.textContent = event.error.message;
+  } else {
+    displayError.textContent = '';
+  }
+});
+
+// Create a token or display an error when the form is submitted.
+var form = document.getElementById('payment-form');
+form.addEventListener('submit', function(event) {
+  event.preventDefault();
+
+  stripe.createToken(card).then(function(result) {
+    if (result.error) {
+      // Inform the customer that there was an error.
+      var errorElement = document.getElementById('card-errors');
+      errorElement.textContent = result.error.message;
+    } else {
+      // Send the token to your server.
+      stripeTokenHandler(result.token);
+    }
+  });
+});
+
+</script>
+</html>
