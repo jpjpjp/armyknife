@@ -16,6 +16,7 @@ uWSGI = "*"
 actingweb = "*"
 pytz = "*"
 boto3 = "*"
+stripe = "*"
 
 [dev-packages]
 pydevd = "*"
