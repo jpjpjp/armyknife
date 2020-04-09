@@ -163,7 +163,7 @@ class CiscoWebexTeams:
             }
         return self.botAuth.oauth_post(self.spark['message_uri'], params=params)
 
-    def post_bot_message(self, email=None, spark_id=None, text='', markdown=False, files=None):
+    def post_bot_message(self, email=None, spark_id=None, text='', markdown=False, files=None, card=None):
         if not email and not spark_id:
             return False
         if email:
@@ -182,6 +182,13 @@ class CiscoWebexTeams:
             params = {
                 'files': files,
             }
+        if card:
+            params['attachments'] = [
+                    {
+                        "contentType": "application/vnd.microsoft.card.adaptive",
+                        "content": card
+                    }
+                ]
         return self.botAuth.oauth_post(self.spark['message_uri'], params=params)
 
     def get_message(self, spark_id=None):

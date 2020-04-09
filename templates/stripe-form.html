@@ -76,11 +76,9 @@ ul li label{
     <div>
         <form action="/stripe" method="post" id="payment-form">
             <input type="hidden" name="id" value="{{ ACTOR_ID }}">
-            <input type="hidden" name="amount" value="{{ AMOUNT }}">
-            <input type="radio" id="monthly" name="plan" checked="checked" value="monthly">
-            <label for="monthly">Monthly $2.99</label>
-            <input type="radio" id="yearly" name="plan" value="yearly">
-            <label for="yearly">Yearly $29.99</label>
+            <input type="hidden" name="plan" value="{{ PLAN }}">
+            <input type="radio" id="term" name="term" checked="checked" value={{ TERM }}>
+            <label for="term">{{ TERM }} {{ AMOUNT }}</label>
           <div class="form-row">
             <label for="card-element">
               Credit or debit card

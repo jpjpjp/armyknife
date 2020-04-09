@@ -313,6 +313,8 @@ def app_www(actor_id, path=''):
         return Response(status=404)
     if h.get_redirect():
         return h.get_redirect()
+    if h.get_status() == 403:
+        return Response(status=403)
     if request.method == 'GET':
         if not path or path == '':
             return render_template('aw-actor-www-root.html', **h.webobj.response.template_values)
@@ -427,9 +429,21 @@ def app_oauth_callback():
 # Outside Actingweb requests
 @app.route('/stripe', methods=['GET', 'POST'], strict_slashes=False)
 def app_stripe():
+    if 'plan' not in request.values:
+        plan = 'monthly2.99'
+    else:
+        plan = str(request.values['plan'])
+    if plan not in payments.PLAN_NAMES:
+        return Response(status=404)
+    if 'monthly' in plan:
+        term = 'monthly'
+    else:
+        term = 'yearly'
     template_values = {
         'ACTOR_ID': str(request.values['id']),
-        'AMOUNT': str(request.values['amount']),
+        'PLAN': plan,
+        'AMOUNT': payments.PLAN_NAMES[plan]['amount'],
+        'TERM': term
     }
     if request.method == 'GET':
         return render_template('stripe-form.html', **template_values)
@@ -437,7 +451,7 @@ def app_stripe():
         me = actor.Actor(request.values['id'], get_config())
         result = payments.process_card(
             actor=me,
-            plan=request.values.get('plan', 'monthly'),
+            plan=plan,
             token=request.values['stripeToken'],
             config=get_config()
         )
@@ -449,9 +463,16 @@ def app_stripe():
 
 @app.route('/stripe-hook', methods=['POST'], strict_slashes=False)
 def app_stripe_hook():
+    if request.is_json:
+        payload = request.json
+    else:
+        try: 
+            payload = json.loads(request.data)
+        except:
+            return Response(status=400)
     return Response(
         status=payments.process_webhook(
-            request.body,
+            payload,
             request.headers['STRIPE_SIGNATURE'],
             get_config()
             )

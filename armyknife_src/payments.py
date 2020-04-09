@@ -8,8 +8,17 @@ from .armyknife import ArmyKnife
 from .ciscowebexteams import CiscoWebexTeams
 from actingweb import actor
 
-PLAN_NAME_MONTHLY = os.getenv('STRIPE_PLAN_MONTHLY', 'plan_DT7JcRIIvbEIRh')
-PLAN_NAME_YEARLY = os.getenv('STRIPE_PLAN_YEARLY', 'plan_DWYIIload0BMNa')
+PLAN_NAMES = {
+    'monthly2.99': {
+        'id': os.getenv('STRIPE_PLAN_MONTHLY', 'plan_DT7JcRIIvbEIRh'),
+        'amount': 2.99
+    },
+    'yearly29.99': {
+        'id': os.getenv('STRIPE_PLAN_YEARLY', 'plan_DWYIIload0BMNa'),
+        'amount': 29.99
+    }
+    
+}
 WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'whsec_OOAQaJWTXVZo4KkWB99aWicUtFBg6a8e')
 
 TRIAL_LENGTH = 30  # Number of days in trial length
@@ -108,8 +117,67 @@ def check_trial_commands(cmd):
 def get_subscribe_msg():
     return "Subscribe now!!!"
 
+def get_subscribe_form(actor=None, config=None):
+    if not actor or not config:
+        return {}
+    my_stripe_url = config.root + 'stripe?id=' + actor.id
+    img_url = config.root + '/static/army_knife.png'
+    return {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.1",
+        "body": [
+            {
+                "type": "ColumnSet",
+                "columns": [
+                    {
+                        "type": "Column",
+                        "width": 2,
+                        "items": [
+                            {
+                                "type": "TextBlock",
+                                "text": "Help support the Army Knife!",
+                                "weight": "Bolder",
+                                "size": "Medium"
+                            },
+                            {
+                                "type": "TextBlock",
+                                "text": "The ArmyKnife costs money to operate, would you be willing to pay to support?",
+                                "isSubtle": "true",
+                                "wrap": "true"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "Column",
+                        "width": 1,
+                        "items": [
+                            {
+                                "type": "Image",
+                                "url": img_url,
+                                "size": "auto"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "actions": [
+            {
+                "type": "Action.OpenUrl",
+                "title": "$2.99 per month",
+                "url": my_stripe_url + '&plan=monthly2.99'
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "$29.99 per year",
+                "url": my_stripe_url + '&plan=yearly29.99'
+            }
+        ]
+    }
 
-def process_card(actor=None, token=None, plan='monthly', config=None):
+
+def process_card(actor=None, token=None, plan='monthly2.99', config=None):
     if not actor  or not token or not actor.id:
         return False
     store = ArmyKnife(actor.id, actor.config)
@@ -143,16 +211,13 @@ def process_card(actor=None, token=None, plan='monthly', config=None):
             logging.error('Failed to create or retrieve customer on ' + actor.id)
             return False
     if 'subscriptions' in cust and cust['subscriptions']['total_count'] == 0:
-        if plan == 'yearly':
-            plan_chosen = PLAN_NAME_YEARLY
-        else:
-            plan_chosen = PLAN_NAME_MONTHLY
+        plan_chosen = PLAN_NAMES[plan]
 
         sub = stripe.Subscription.create(
             customer=cust['id'],
             items=[
                 {
-                    "plan": plan_chosen,
+                    "plan": plan_chosen['id'],
                 },
             ]
         )
@@ -164,7 +229,7 @@ def process_card(actor=None, token=None, plan='monthly', config=None):
             logging.error('Failed to create new subscription '  + actor.id)
             return False
         bot.post_admin_message(
-            text="Subscription for user " + actor.creator + " was just created with plan " + plan_chosen + ".\n\n",
+            text="Subscription for user " + actor.creator + " was just created with plan " + plan + ".\n\n",
             markdown=True
         )
         store.save_perm_attribute('subscription', data)
@@ -221,7 +286,6 @@ def cancel_subscription(actor=None, config=None):
 
 def process_webhook(payload, signature, config):
     try:
-        payload = json.loads(payload)
         event = stripe.Webhook.construct_event(payload, signature, WEBHOOK_SECRET)
     except Exception:
         # Invalid payload or signature

@@ -487,7 +487,16 @@ class WebexTeamsMessageHandler:
                     text="If you repeatedly get this error message, do /delete DELETENOW "
                          "before a new /init. This will reset your account (note: all settings as well).")
                 logging.info("User (" + self.spark.me.creator + ") got notified about invalid status.")
-            return False
+            return 
+        # Send a one-time message about support
+        if not self.spark.me.property.sent_money_plea:
+            self.spark.me.property.sent_money_plea = "true"
+            card_cont = payments.get_subscribe_form(actor=self.spark.me, config=self.spark.config)
+            self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    card=card_cont
+                )
+            logging.info("User (" + self.spark.me.creator + ") got marketing message.")
         self.validate_token()
         self.global_actions()
         self.message_autoreply()
