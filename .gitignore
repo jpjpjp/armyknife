@@ -215,3 +215,5 @@ dmypy.json
 
 node_modules
 .vscode/settings.json
+.vscode/launch.json
+.DS_Store
