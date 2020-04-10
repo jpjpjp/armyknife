@@ -117,6 +117,14 @@ def check_trial_commands(cmd):
 def get_subscribe_msg():
     return "Subscribe now!!!"
 
+def get_subscribe_md(actor=None, config=None):
+    if not actor or not config:
+        return {}
+    my_stripe_url = config.root + 'stripe?id=' + actor.id
+    return "The **ArmyKnife** costs money to operate, would you be willing to pay to support?\n\n" + \
+           "* [Monthly $2.99](" + my_stripe_url + '&plan=monthly2.99' + ")\n\n" + \
+           "* [Yearly $29.99](" + my_stripe_url + '&plan=yearly29.99' + ")\n\n"
+
 def get_subscribe_form(actor=None, config=None):
     if not actor or not config:
         return {}

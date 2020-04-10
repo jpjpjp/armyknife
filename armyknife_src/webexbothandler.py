@@ -1031,6 +1031,42 @@ class WebexTeamsBotHandler:
             self.spark.link.post_bot_message(
                 email=self.spark.person_object,
                 text="You will now get Army Knife announcements!")
+        elif self.spark.cmd == '/keydelete':
+            if len(self.spark.msg_list) > 1:
+                arg = self.spark.msg_list_wcap[1]
+            else:
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Usage: /keydelete <keyname>, e.g. /keydelete service_status")
+                return
+            if '.' in arg:
+                bucket, keyname = arg.split('.', 1)
+            else:
+                bucket = None
+                keyname = arg
+            if not bucket:
+                self.spark.me.property[keyname] = None
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Deleted property key " + keyname + ".")
+            elif bucket == '_internal':
+                self.spark.me.store[keyname] = None
+                self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="Deleted _internal key " + keyname + ".")
+            else:
+                message_bucket = attribute.Attributes(self.spark.actor_id, bucket, config=self.spark.config)
+                attrs = attribute.Buckets(actor_id=self.spark.me.id, config=self.spark.config).fetch()
+                values = message_bucket.get_bucket()
+                if keyname in values:
+                    message_bucket.delete_attr(keyname)
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Deleted key " + keyname + " in bucket " + bucket + ".")
+                else:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.me.creator,
+                        text="Deleted key " + keyname + " in bucket " + bucket + ".")
         # Global beta users bypass subscriptions and trials!
         feature_toggles = self.spark.me.get_property('featureToggles').value
         if not feature_toggles or 'beta' not in feature_toggles:

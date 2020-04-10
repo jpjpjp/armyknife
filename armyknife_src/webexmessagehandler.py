@@ -494,6 +494,8 @@ class WebexTeamsMessageHandler:
             card_cont = payments.get_subscribe_form(actor=self.spark.me, config=self.spark.config)
             self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
+                    text=payments.get_subscribe_md(actor=self.spark.me, config=self.spark.config),
+                    markdown=True,
                     card=card_cont
                 )
             logging.info("User (" + self.spark.me.creator + ") got marketing message.")
@@ -883,7 +885,7 @@ class WebexTeamsMessageHandler:
                         text="Usage: `/deletemember <email> <room-id>` to delete user with <email>"
                              " from a room with <room-id>.\n\n"
                              " or: `/deletemember <email> FORCE count` to delete user with <email>"
-                             " from ALL shared room where count=number of shared rooms (use /checkmember).",
+                             " from ALL shared rooms, where count=number of shared rooms (use /checkmember).",
                         markdown=True)
                     return
                 if not fargate.in_fargate() and not fargate.fargate_disabled():
