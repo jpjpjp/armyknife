@@ -129,7 +129,7 @@ def get_subscribe_form(actor=None, config=None):
     if not actor or not config:
         return {}
     my_stripe_url = config.root + 'stripe?id=' + actor.id
-    img_url = config.root + '/static/army_knife.png'
+    img_url = config.root + 'static/army_knife.png'
     return {
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
         "type": "AdaptiveCard",

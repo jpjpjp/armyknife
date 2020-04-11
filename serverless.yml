@@ -16,6 +16,9 @@ custom:
   execRoleArn: { "Fn::Join" : ["", [ "arn:aws:iam::", { "Ref" : "AWS::AccountId" }, ":role/ecsTaskExecutionRole" ] ] }
 
 provider:
+  apiGateway:
+    binaryMediaTypes:
+      - '*/*'
   name: aws
   runtime: python3.7
   memorySize: 128
