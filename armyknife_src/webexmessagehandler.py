@@ -488,7 +488,7 @@ class WebexTeamsMessageHandler:
                          "before a new /init. This will reset your account (note: all settings as well).")
                 logging.info("User (" + self.spark.me.creator + ") got notified about invalid status.")
             return 
-        # Send a one-time message about support
+        # Send a one-time message about money support
         if not self.spark.me.property.sent_money_plea:
             self.spark.me.property.sent_money_plea = "true"
             card_cont = payments.get_subscribe_form(actor=self.spark.me, config=self.spark.config)
@@ -498,7 +498,27 @@ class WebexTeamsMessageHandler:
                     markdown=True,
                     card=card_cont
                 )
-            logging.info("User (" + self.spark.me.creator + ") got marketing message.")
+            logging.debug("User (" + self.spark.me.creator + ") got marketing message.")
+        has_trial, has_subscription = payments.check_valid_trial_or_subscription(self.spark.store)
+        if not has_subscription and not has_trial:
+            self.spark.me.property.app_disabled = 'true'
+            card_cont = payments.get_subscribe_form(actor=self.spark.me, config=self.spark.config)
+            self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=payments.get_subscribe_md(actor=self.spark.me, config=self.spark.config),
+                    markdown=True,
+                    card=card_cont
+            )
+            self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text="The ArmyKnife has now been disabled to reduce the costs of operating the service. "
+                         "Please consider supporting the ArmyKnife by subscribing! "
+                         "(However, you may use the command `/enable` to get another 30 days.)",
+                    markdown=True
+            )
+            # Reset the timer on trial
+            self.spark.store.save_perm_attribute('first_visit', "today")
+            return
         self.validate_token()
         self.global_actions()
         self.message_autoreply()
@@ -1573,6 +1593,8 @@ class WebexTeamsMessageHandler:
         if self.spark.cmd == '/fargate':
             fargate.fork_container(self.webobj.request, self.spark.actor_id)
             return
+        """
+        Apr 11, 2020, GTW, disabled as we now don't enforce subscriptions
         # Global beta users bypass subscriptions and trials!
         feature_toggles = self.spark.me.property.featureToggles
         if not feature_toggles or 'beta' not in feature_toggles:
@@ -1583,7 +1605,7 @@ class WebexTeamsMessageHandler:
                     text=msg,
                     markdown=True)
             if abort:
-                return
+                return """
         if self.spark.room_id == self.spark.chat_room_id:
             # Commands run in the 1:1 bot room that need OAuth rights on behalf
             # of the user to execute

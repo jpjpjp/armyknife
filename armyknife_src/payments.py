@@ -52,13 +52,12 @@ TRIAL_FEATURES = PAID_FEATURES_BOT + PAID_FEATURES_INT
 stripe.log = 'info'
 stripe.api_key = os.getenv('STRIPE_API_KEY', 'sk_test_IiAlGGLyqmEPPfqF4VY8Zn3w')
 
-
-def check_subscriptions(cmd, store, context='integration'):
+# Returns bool tuple of subscription, trial
+def check_valid_trial_or_subscription(store):
     # Check for trial and payment status
     perm_attrs = store.get_perm_attributes()
     trial = False
-    abort = False
-    msg = ''
+    subscription = False
     # Does the user have a subscription?
     if 'subscription' not in perm_attrs:
         # If not, let's check if this is a trial
@@ -69,6 +68,12 @@ def check_subscriptions(cmd, store, context='integration'):
             if check_valid_trial(perm_attrs['first_visit']):
                 trial = True
     subscription = check_valid_subscription(perm_attrs.get('subscription', None))
+    return (subscription, trial)
+
+def check_subscriptions(cmd, store, context='integration'):
+    trial, subscription = check_valid_trial_or_subscription(store)
+    abort = False
+    msg = ''
     if trial and not subscription:
         if not check_trial_commands(cmd) and check_subscription_commands(cmd):
             msg = msg + "You are in the trial period and just used a command only available to subscribers!\n\n"
@@ -98,7 +103,7 @@ def check_valid_trial(trial):
 def check_valid_subscription(sub):
     if not sub:
         return False
-    if 'data' in sub and 'sub_id' in sub['data']:
+    if 'data' in sub:
         now = datetime.datetime.now()
         end = datetime.datetime.fromtimestamp(sub['data']['sub_end'])
         if now < end:

@@ -4,7 +4,7 @@ import logging
 from actingweb import actor, attribute, auth
 from armyknife_src import fargate
 from armyknife_src import ciscowebexteams
-from .payments import cancel_subscription, check_subscriptions
+from . import payments
 
 
 class WebexTeamsBotHandler:
@@ -824,8 +824,9 @@ class WebexTeamsBotHandler:
 
     def subscription_command(self):
         sub = self.spark.store.get_perm_attribute('subscription')
+        send_card = False
         if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'cancel':
-            cancel_subscription(self.spark.me, self.spark.config)
+            payments.cancel_subscription(self.spark.me, self.spark.config)
             return
         if sub and 'data' in sub:
             if len(self.spark.msg_list) == 2 and self.spark.msg_list[1] == 'dump':
@@ -844,14 +845,23 @@ class WebexTeamsBotHandler:
                       end.strftime('%Y-%m-%d %H:%M') + ' (UTC).\n\n'
             else:
                 out = 'Your subscription expired on ' + end.strftime('%Y-%m-%d %H:%M') + ' (UTC).\n\n'
-            out = out + 'You can restart a subscription or update your card on this link: '
+            sand_card = True
         else:
-            out = "You don't have an active subscription.\n\nPlease subscribe on this link: "
-        out = out + self.spark.config.root + 'stripe?amount=2.99&id=' + self.spark.me.id
+            out = "You don't have an active subscription.\n\n"
+            send_card = True
         self.spark.link.post_bot_message(
             email=self.spark.person_object,
             text=out,
-            markdown=True)
+            markdown=True
+        )
+        if send_card:
+            card_cont = payments.get_subscribe_form(actor=self.spark.me, config=self.spark.config)
+            self.spark.link.post_bot_message(
+                    email=self.spark.me.creator,
+                    text=payments.get_subscribe_md(actor=self.spark.me, config=self.spark.config),
+                    markdown=True,
+                    card=card_cont
+            )
 
     def messages_created(self):
         if not self.spark.room_id:
@@ -1071,17 +1081,19 @@ class WebexTeamsBotHandler:
                     self.spark.link.post_bot_message(
                         email=self.spark.me.creator,
                         text="Deleted key " + keyname + " in bucket " + bucket + ".")
+        """ 
+        Apr 11, 2020, GTW, disabled as we now don't enforce subscriptions
         # Global beta users bypass subscriptions and trials!
         feature_toggles = self.spark.me.get_property('featureToggles').value
         if not feature_toggles or 'beta' not in feature_toggles:
-            abort, msg = check_subscriptions(self.spark.cmd, self.spark.store, 'bot')
+            abort, msg = payments.check_subscriptions(self.spark.cmd, self.spark.store, 'bot')
             if msg:
                 self.spark.link.post_bot_message(
                     email=self.spark.me.creator,
                     text=msg,
                     markdown=True)
             if abort:
-                return
+                return """
         if self.spark.cmd == '/track' or self.spark.cmd == '/untrack' or self.spark.cmd == '/trackers':
             self.tracker_commands()
             return
