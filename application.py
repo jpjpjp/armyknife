@@ -463,16 +463,9 @@ def app_stripe():
 
 @app.route('/stripe-hook', methods=['POST'], strict_slashes=False)
 def app_stripe_hook():
-    if request.is_json:
-        payload = request.json
-    else:
-        try: 
-            payload = json.loads(request.data)
-        except:
-            return Response(status=400)
     return Response(
         status=payments.process_webhook(
-            payload,
+            request.data,
             request.headers['STRIPE_SIGNATURE'],
             get_config()
             )

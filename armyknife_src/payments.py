@@ -10,12 +10,24 @@ from actingweb import actor
 
 PLAN_NAMES = {
     'monthly2.99': {
-        'id': os.getenv('STRIPE_PLAN_MONTHLY', 'plan_DT7JcRIIvbEIRh'),
+        'id': os.getenv('STRIPE_PLAN_MONTHLY_2.99', 'armyknife_support_monthly_2-99'),
         'amount': 2.99
     },
     'yearly29.99': {
-        'id': os.getenv('STRIPE_PLAN_YEARLY', 'plan_DWYIIload0BMNa'),
+        'id': os.getenv('STRIPE_PLAN_YEARLY_29.99', 'armyknife_support_yearly_29-99'),
         'amount': 29.99
+    },
+    'monthly3.99': {
+        'id': os.getenv('STRIPE_PLAN_MONTHLY_3.99', 'armyknife_support_monthly_3-99'),
+        'amount': 3.99
+    },
+    'yearly39.99': {
+        'id': os.getenv('STRIPE_PLAN_YEARLY_39.99', 'armyknife_support_yearly_39-99'),
+        'amount': 39.99
+    },
+    'yearly20': {
+        'id': os.getenv('STRIPE_PLAN_YEARLY_20', 'armyknife_support_yearly_20'),
+        'amount': 20.00
     }
     
 }
@@ -128,7 +140,10 @@ def get_subscribe_md(actor=None, config=None):
     my_stripe_url = config.root + 'stripe?id=' + actor.id
     return "The **ArmyKnife** costs money to operate, would you be willing to pay to support?\n\n" + \
            "* [Monthly $2.99](" + my_stripe_url + '&plan=monthly2.99' + ")\n\n" + \
-           "* [Yearly $29.99](" + my_stripe_url + '&plan=yearly29.99' + ")\n\n"
+           "* [Yearly $29.99](" + my_stripe_url + '&plan=yearly29.99' + ")\n\n" + \
+           "* [Monthly $3.99](" + my_stripe_url + '&plan=monthly3.99' + ")\n\n" + \
+           "* [Yearly $39.99](" + my_stripe_url + '&plan=yearly39.99' + ")\n\n" + \
+           "* [Yearly $20](" + my_stripe_url + '&plan=yearly20' + ")\n\n" 
 
 def get_subscribe_form(actor=None, config=None):
     if not actor or not config:
@@ -185,6 +200,21 @@ def get_subscribe_form(actor=None, config=None):
                 "type": "Action.OpenUrl",
                 "title": "$29.99 per year",
                 "url": my_stripe_url + '&plan=yearly29.99'
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "$3.99 per month",
+                "url": my_stripe_url + '&plan=monthly3.99'
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "$39.99 per year",
+                "url": my_stripe_url + '&plan=yearly39.99'
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "$20 per year",
+                "url": my_stripe_url + '&plan=yearly20'
             }
         ]
     }
@@ -303,6 +333,11 @@ def process_webhook(payload, signature, config):
     except Exception:
         # Invalid payload or signature
         logging.error('Webhook signature verification error')
+        return 400
+    try: 
+        payload = json.loads(payload)
+        logging.error('Stripe webhook json decode error')
+    except:
         return 400
     cust = None
     bot = CiscoWebexTeams(auth=None, actor_id=None, config=config)

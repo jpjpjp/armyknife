@@ -245,6 +245,7 @@ class OnAWWebexTeams(on_aw.OnAWBase):
                      "or do `/support your_msg` to get help",
                 markdown=True)
             return True
+        spark.me.property.app_disabled = None
         spark.link.post_bot_message(
             email=email,
             text="Hi there! Welcome to the **Army Knife**! \n\n"
