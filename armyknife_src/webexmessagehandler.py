@@ -274,6 +274,26 @@ class WebexTeamsMessageHandler:
                 text="**" + display_name + " (" + self.spark.person_data['personEmail'] +
                 ") sent a 1:1 message to you (auto-replied to) :**\n\n" + self.spark.msg_data['text'], markdown=True)
 
+    def message_tracked_live(self):
+        self.spark.enrich_data('account')
+        self.spark.enrich_data('msg')
+        self.spark.enrich_data('room')
+        app_disabled = self.spark.me.property.app_disabled
+        if app_disabled and app_disabled.lower() == 'true':
+            logging.debug("Account is disabled: " + self.spark.me.creator)
+            return
+        if 'title' in self.spark.room_data and 'text' in self.spark.msg_data:
+            sender = self.spark.link.get_person(spark_id=self.spark.person_id)
+            if 'displayName' not in sender:
+                display_name = 'Unknown'
+            else:
+                display_name = sender['displayName']
+            self.spark.link.post_bot_message(
+                email=self.spark.me.creator,
+                text="**" + display_name + " (" + self.spark.person_object +
+                ") in the room " + self.spark.room_data['title'] + ":**\n\n" +
+                self.spark.msg_data['text'], markdown=True)       
+
     def message_mentions(self):
         if 'mentionedPeople' not in self.spark.data:
             return
@@ -796,7 +816,7 @@ class WebexTeamsMessageHandler:
                              "\n\n**Events**: " + h['resource'] + ":" +
                              h['event'] +
                              "\n\n**Target**: " + h['targetUrl'] +
-                             "\n\n**Created**: " + h['created'] +
+                             "\n\n**Created**: " + h.get('created','-') +
                              "\n\n- - -\n\n",
                         markdown=True
                     )
@@ -829,7 +849,7 @@ class WebexTeamsMessageHandler:
                 text="Started cleaning up ALL webhooks...")
             self.spark.link.clean_all_webhooks(spark_id=self.spark.room_id)
             msghash = hashlib.sha256()
-            msghash.update(self.spark.me.passphrase)
+            msghash.update(self.spark.me.passphrase.encode('utf-8'))
             hook = self.spark.link.register_webhook(
                 name='Firehose',
                 target=self.spark.config.root + self.spark.me.id + '/callbacks/firehose',
@@ -1576,7 +1596,11 @@ class WebexTeamsMessageHandler:
         if self.spark.room_id == self.spark.config.bot["admin_room"]:
             logging.debug("Integration firehose in admin room, dropping...")
             return
-        self.spark.store.process_message(self.spark.data)
+        live_trackers = False if self.spark.me.property.live_trackers == 'false' else True
+        # will not store message, but return True if message is tracked
+        tracked = self.spark.store.process_message(self.spark.data, not live_trackers)
+        if tracked and live_trackers:
+            self.message_tracked_live()
         if self.spark.person_id != self.spark.actor_spark_id:
             # We only execute commands in messages from the Cisco Webex Teams user attached
             # to this ArmyKnife actor (not to).

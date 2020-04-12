@@ -104,7 +104,7 @@ class ArmyKnife:
                 }
         return None
 
-    def process_message(self, msg=None):
+    def process_message(self, msg=None, save=True):
         if not msg:
             return False
         # Is this message from a registered person to track?
@@ -112,6 +112,8 @@ class ArmyKnife:
         person = person_bucket.get_attr(msg['personEmail'])
         if not person:
             return False
+        if not save:
+            return True
         message_bucket = attribute.Attributes(actor_id=self.actor_id, bucket="messages", config=self.config)
         message_bucket.set_attr(
             name=msg['id'],

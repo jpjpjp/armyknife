@@ -395,7 +395,8 @@ class WebexTeamsBotHandler:
                  " below.\n\n"
                  "- Use `/manageteam list` to list all teams.\n\n"
                  "**Messaging**\n\n"
-                 "- Use `/track <email> <nickname>` to track messages from a person/VIP.\n\n"
+                 "- Use `/track <email> <nickname>` to track messages live from a person/VIP.\n\n"
+                 "- Use `/track [store|live]` to either store messages (use /get) or track live (default).\n\n"
                  "- Use `/trackers` to list tracked emails.\n\n"
                  "- Use `/get <nickname>` to get a list of all messages since last time"
                  " for that person "
@@ -469,12 +470,25 @@ class WebexTeamsBotHandler:
     def tracker_commands(self):
         if self.spark.cmd == '/track':
             if len(self.spark.msg_list) < 3:
-                self.spark.link.post_bot_message(
-                    email=self.spark.person_object,
-                    text="Usage: `/track <email> <nickname>`",
-                    markdown=True)
+                if len(self.spark.msg_list) < 2:
+                    self.spark.link.post_bot_message(
+                        email=self.spark.person_object,
+                        text="Usage: `/track <email> <nickname>` (`/track [store|live]` to control message storage)",
+                        markdown=True)
+                    return
+                if self.spark.msg_list[1] == 'live':
+                    self.spark.me.property.live_trackers = None
+                    self.spark.link.post_bot_message(
+                        email=self.spark.person_object,
+                        text="Will start to track messages live.",
+                        markdown=True)
+                if self.spark.msg_list[1] == 'store':
+                    self.spark.me.property.live_trackers = 'false'
+                    self.spark.link.post_bot_message(
+                        email=self.spark.person_object,
+                        text="Will start to store messages instead of tracking live.",
+                        markdown=True)
                 return
-            # person = spark.link.get_person()
             added = self.spark.store.add_tracker(self.spark.msg_list[1], self.spark.msg_list[2])
             if added:
                 self.spark.link.post_bot_message(
@@ -483,7 +497,7 @@ class WebexTeamsBotHandler:
             else:
                 self.spark.link.post_bot_message(
                     email=self.spark.person_object,
-                    text="Was not able to add tracking of " + self.spark.msg_list[1])
+                    text="Was not able to add tracking (already tracked?) of " + self.spark.msg_list[1])
         elif self.spark.cmd == '/untrack':
             if self.spark.store.delete_tracker(self.spark.msg_list[1]):
                 self.spark.link.post_bot_message(
